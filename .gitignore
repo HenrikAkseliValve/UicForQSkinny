@@ -1,0 +1,5 @@
+# Ignore executable name
+qskuic
+
+# C++ compiler intermediary files.
+*.o
