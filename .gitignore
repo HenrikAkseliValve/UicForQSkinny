@@ -3,3 +3,7 @@ qskuic
 
 # C++ compiler intermediary files.
 *.o
+
+# Ignore CMake build directories
+build
+release
