@@ -246,12 +246,12 @@ int main(int argn, char **argv){
 									goto jmp_ERROR_CLOSE;
 								}
 
-								// Start generating the class.
+								// Start generating the struct.
 								outputfile << QByteArray("struct ") << classname << " {\n";
 
 								;
 
-								// Close the class bracket.
+								// Close the struct bracket.
 								outputfile << QByteArray("}\n");
 							}
 						}
