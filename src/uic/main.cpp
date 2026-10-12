@@ -3,15 +3,16 @@
 */
 #include <QtCore/QCoreApplication>
 #include <QtCore/QCommandLineParser>
-#include <QtXml/QDomDocument>
 #include <QtCore/QFile>
 #include <QtCore/QTextStream>
+#include <QtCore/QString>
+#include <QtCore/QXmlStreamReader>
 #include <qskinny/QskGlobal.h>
 #include <iostream>
 #include <filesystem>
 
 /*
- * If name of the program is not given from the compiler then default to "qskuic".
+ * If version number is not given from the compiler then default to "git",
 */
 #ifndef PROGNAME
 #define PROGNAME qskuic
@@ -34,18 +35,37 @@ static const QString Empty = QStringLiteral("");
 /*
  * List of tag name in constant strings to avoid writting errors when used multiple times.
 */
+static const QString Ui = QStringLiteral("ui");
 static const QString ExportMacro = QStringLiteral("exportmacro");
 static const QString Author = QStringLiteral("author");
 static const QString Description = QStringLiteral("description");
 static const QString Include = QStringLiteral("include");
+static const QString Struct = QStringLiteral("struct");
 
 /*
- * Parse a internals of pure text tag. Needs tag name for the error message.
+ * Parse a internals of pure text tag. Needs tag name for the error messages.
 */
-QString static parse_text_tag(QDomElement ele, QString nodename){
-	auto name = ele.firstChild();
-	if(name.isText()) {
-		return name.toText().data();
+QString static parse_text_tag(QXmlStreamReader *reader, QString nodename) {
+	auto nodeid = reader->readNext();
+	if(nodeid == QXmlStreamReader::TokenType::Characters) {
+		
+		// Before returning the check that end tag is reached for given node.
+		// Return value is cached for time being. Note also that QStringView returned by reader
+		// would change before is is used so we need to change it to solid memory.
+		QString returner = reader->text().toString();
+
+		reader->readNext();
+		if(reader->isEndElement()) {
+			if (reader->name() == nodename) return returner;
+			else{
+				std::cerr << "End tag found but it was not for " << nodename.toStdString() << ".\n";
+				exit(1);
+			}
+		}
+		else{
+			std::cerr << "Inside tag " << nodename.toStdString() << " has to be just text.\n";
+			exit(1);
+		}
 	}
 	else {
 		std::cerr << "Inside " << nodename.toStdString() << " tag must be text." << '\n';
@@ -74,7 +94,7 @@ int main(int argn, char **argv){
 	parser.process(app);
 
 	const QStringList srcfiles = parser.positionalArguments();
-	if(srcfiles.count() == 0){
+	if(srcfiles.count() == 0) {
 		std::cout << "No source files to compile. Exiting..." << std::endl;
 		return 0;
 	}
@@ -82,36 +102,29 @@ int main(int argn, char **argv){
 	// Allow multiple files to specified but do not advertise.
 	// Feature maybe removed.
 	const QString srcfile = srcfiles.at(0);
-	QDomDocument srcxml(srcfile);
-	{
-		QFile file(srcfile);
-		if (!file.open(QIODevice::ReadOnly)) {
-			std::cerr << "Source file not found!" << std::endl;
-			return 1;
-		}
-		if (!srcxml.setContent(&file)) {
-			std::cerr << "Source content reading failed!" << std::endl;
-			file.close();
-			return 1;
-		}
-		file.close();
+	QFile file(srcfile);
+	if(!file.open(QIODevice::ReadOnly)) {
+		std::cerr << "Source file not found!" << std::endl;
+		return 1;
 	}
+
+	QXmlStreamReader xmlreader;
+	xmlreader.setDevice(&file);
 
 	QTextStream outputfile;
 	if(parser.isSet(outputoption)) {
 		// Create the output file and path.
 		std::filesystem::path outputfilepath = parser.value(outputoption).toStdString();
-		if (std::filesystem::exists(outputfilepath))
-		{
-			// Create the directories up to the file.
-			std::filesystem::create_directories(outputfilepath.parent_path());
+		if(std::filesystem::exists(outputfilepath)) {
+				// Create the directories up to the file.
+				std::filesystem::create_directories(outputfilepath.parent_path());
 		}
 
 		// Open the file and then aias to QDataStream for writting.
 		auto file = new QFile();
 		if(file->open(QIODeviceBase::OpenMode::enum_type::Truncate | QIODeviceBase::OpenMode::enum_type::WriteOnly) == false) {
-			std::cerr << "Could not open the output file!" << '\n';
-			return 1;
+				std::cerr << "Could not open the output file!" << '\n';
+				return 1;
 		}
 
 		outputfile.setDevice(file);
@@ -122,154 +135,144 @@ int main(int argn, char **argv){
 	}
 
 	{
-		QDomNode node = srcxml.documentElement();
-		QDomElement ele;
-		QDomText text;
+		// String to store information used in overviwer comment.
+		QString description = Empty;
+		QString author = Empty;
 
 		// Macro added class to control export in some languages.
-		QString exportmacro = QStringLiteral("");
+		QString exportmacro = Empty;
 
 		// List to store includes.
 		QList<QString> systemincludes;
 		QList<QString> localincludes;
 
-		// String to store information used in overviwer comment.
-		QString description = Empty;
-		QString author = Empty;
+		// There is start document node which we do not need so take it out.
+		xmlreader.readNext();
 
-		while(!node.isNull()) {
+		QXmlStreamReader::TokenType token;
+		while((token = xmlreader.readNext()) != QXmlStreamReader::EndDocument && !xmlreader.hasError()) {
 
-			// Get Node type to decide next operation.
-			QDomNode::NodeType type = node.nodeType();
+			if(token == QXmlStreamReader::StartElement) {
+				QStringView name = xmlreader.name();
+				if(name == Ui) {
+					// Parse the root "ui" element and its children
+					QXmlStreamAttributes attributes = xmlreader.attributes();
+					QString version = attributes.value("version").toString();
+					if(version.isEmpty()) {
+						version = "0.0";
+					}
 
-			if(type == QDomNode::NodeType::ElementNode) {
-				ele = node.toElement();
-				if(ele.tagName() == "ui") {
+					// Read all children of the "ui" element.
+					// If we hit EndElement it must be end of "ui" tag.
+					while((token = xmlreader.readNext()) != QXmlStreamReader::EndElement && !xmlreader.hasError()) {
 
-					// Check optional version attribute before moving to parse metadata.
-					QString version = ele.attribute("version", "0.0");
-					
-					// Grab first child of "ui" root. Everything under here is considered 
-					QDomNode uinode = ele.firstChild();
-					
-					do{
+						// Every newline and whitespace is reported as a character node.
+						// We could skip to next element but that would assume user has made perfect syntax and no character node
+						// was but in error. Hence, we need to handle the characters nodes and check `isWhitespace` to report
+						// error and allow whitespace.
+						if((token == QXmlStreamReader::Characters && xmlreader.isWhitespace()) || token == QXmlStreamReader::Comment) continue;
 
-						if(uinode.isElement()) {
-							ele = uinode.toElement();
-
-							if(ele.tagName() == ExportMacro) {
-								exportmacro = parse_text_tag(ele, ExportMacro);
-							}
-							else if(ele.tagName() == Author) {
-								author = parse_text_tag(ele, Author);
-							}
-							else if(ele.tagName() == Description) {
-								description = parse_text_tag(ele, Description);
-							}
-							else if(ele.tagName() == Include) {
-
-								// Is this include local or system. May effect output.
-								enum {LOCAL, SYSTEM} localorsystem = SYSTEM;
-
-								// Attributes are not part of the node tree. They are nodes but
-								// under per element under mapping structure.
-								auto attributes = ele.attributes();
-								for(int i = 0; i < attributes.length(); i++) {
-									auto attribute = attributes.item(i).toAttr();
-
-									if(attribute.name() == "location") {
-										QString value = attribute.value();
-										if(value == "local"){
-											localorsystem = LOCAL;
-										}
-										else if(value == "system") {
-											localorsystem = SYSTEM;
-										}
-										else {
-											std::cerr << "Unknown value for attribute location in " << Include.toStdString() << " tag." << '\n';
-											goto jmp_ERROR_CLOSE;
-										}
-									}
-									else {
-										std::cerr << "Unknown attribute in " << Include.toStdString() << " tag." << '\n';
+						name = xmlreader.name();
+						if(name == ExportMacro) {
+							// Do not allow anything else then character node.
+							exportmacro = parse_text_tag(&xmlreader, ExportMacro);
+						}else if(name == Author) {
+							// Do not allow anything else then character node.
+							author = parse_text_tag(&xmlreader, Author);
+						}else if(name == Description) {
+							// Do not allow anything else then character node.
+							description = parse_text_tag(&xmlreader, Description);
+						}else if(name == Include) {
+							// Check the 'location' attribute
+							QXmlStreamAttributes attrs = xmlreader.attributes();
+							
+							// Assume system include by default.
+							enum {LOCAL, SYSTEM} localorsystem = SYSTEM;
+							for(int i = 0; i < attrs.size(); i++) {
+								QStringView attrName = attrs.at(i).name();
+								if (attrName == "location") {
+									QString value = attrs.at(i).value().toString();
+									if(value == "local") {
+										localorsystem = LOCAL;
+									}else if (value != "system") {
+										std::cerr << "Unknown value for attribute location in " << Include.toStdString() << " tag." << '\n';
 										goto jmp_ERROR_CLOSE;
 									}
-								}
-
-								// Read the incldue values text and generate a include.
-								auto qtext = parse_text_tag(ele, Include);
-								if (localorsystem == LOCAL){
-									localincludes.append(qtext);
-								}
-								else{
-									systemincludes.append(qtext);
-								}
-							}
-							else if(ele.tagName() == "struct") {
-
-								QByteArray buffer;
-
-								// Generate the overviwer comment message to the output buffer.
-								outputfile << QByteArray("/*\nThis file was generated by " PROGNAME_STR ".\n");
-
-								if(description != Empty) outputfile << description.toUtf8() << QByteArray("\n");
-								if(author != Empty) outputfile << QByteArray("Author: ") + author.toUtf8() + QByteArray("\n");
-								
-								outputfile << QByteArray("*/\n");
-
-								// Go throught the includes
-								// TODO: Options to effect default sort which is order or appearance. Examples, alphapetical sorting or mix of system and local includes.
-								for(auto include : systemincludes) {
-									outputfile << QByteArray("#include <") << include.toUtf8() << ">\n";
-								}
-								for(auto include : localincludes) {
-									outputfile << QByteArray("#include \"") << include.toUtf8() << "\"\n";
-								}
-
-								// Class to be generated.
-								QString classname = Empty;
-
-								// Handle attributes for the "class" tag.
-								auto attributes = ele.attributes();
-								for(int i = 0; i < attributes.length(); i++) {
-									auto attribute = attributes.item(i).toAttr();
-
-									if(attribute.name() == "name") {
-										QString value = attribute.value();
-										classname = value;
-									}
-								}
-
-								// If name attribute was not provided thrown an error.
-								if (classname == Empty){
-									std::cerr << "Syntax error a `class` tag did not have an name attribute. This is mandatory." << '\n';
+								}else {
+									std::cerr << "Unknown attribute in " << Include.toStdString() << " tag." << '\n';
 									goto jmp_ERROR_CLOSE;
 								}
-
-								// Start generating the struct.
-								outputfile << QByteArray("struct ") << classname << " {\n";
-
-								;
-
-								// Close the struct bracket.
-								outputfile << QByteArray("}\n");
 							}
+
+							// Read the include value
+							QString include = QString(parse_text_tag(&xmlreader, Include));
+
+							if(localorsystem == SYSTEM) localincludes.append(include);
+							else systemincludes.append(include);
+
+						}else if(name == Struct) {
+							// Generate the output comment
+							outputfile << QByteArray("/*\nThis file was generated by " PROGNAME_STR ".\n");
+							if(description != Empty) outputfile << description.toUtf8() << QByteArray("\n");
+							if(author != Empty) outputfile << QByteArray("Author: ") + author.toUtf8() + QByteArray("\n");
+							outputfile << QByteArray("*/\n");
+
+							// Output includes
+							for(auto include : systemincludes) {
+								outputfile << QByteArray("#include <") << include.toUtf8() << ">\n";
+							}
+							for(auto include : localincludes) {
+								outputfile << QByteArray("#include \"") << include.toUtf8() << "\"\n";
+							}
+
+							// Extract classname attribute
+							QXmlStreamAttributes attrs = xmlreader.attributes();
+							QStringView classname;
+							for(int i = 0; i < attrs.size(); i++) {
+								QStringView attrName = attrs.at(i).name();
+								if (attrName == "name") {
+									classname = attrs.at(i).value();
+								}
+							}
+
+							if(classname == Empty) {
+								std::cerr << "Syntax error a `class` tag did not have an name attribute. This is mandatory." << '\n';
+								goto jmp_ERROR_CLOSE;
+							}
+
+							// Start generating the struct
+							outputfile << QByteArray("struct ") << classname << " {\n";
+							while(xmlreader.readNext() != QXmlStreamReader::EndElement){
+								;
+							}
+
+							// Check that end tag we hit was "struct".
+							if(xmlreader.name() != Struct) {
+								std::cerr << "Tag struct was not closed. Check tag endings inside of struct if ending tag exists.\n";
+							}
+
+							outputfile << QByteArray("}\n");
+						}else {
+							std::cerr << "Unknown tag found as child of ui tag." << '\n';
+							goto jmp_ERROR_CLOSE;
 						}
-						uinode = uinode.nextSibling();
-					}while(!uinode.isNull());
+					}
 
-				}
-				else{
-					std::cerr << "Unknown tag found." << '\n';
-					goto jmp_ERROR_CLOSE;
+					// Check that end tag we hit was "ui".
+					if(xmlreader.name() != Ui) {
+						std::cerr << "Tag ui was not closed. Check tag endings inside of ui if ending tag exists." << '\n';
+					}
+
+				}else {
+						std::cerr << "Unknown root tag found. Tag hit:" << name.toUtf8().toStdString() << '\n';
+						goto jmp_ERROR_CLOSE;
 				}
 			}
-			else{
-				std::cerr << "Unknown node found." << '\n';
-				goto jmp_ERROR_CLOSE;
-			}
+		}
 
-			node = node.nextSibling();
+		if(xmlreader.hasError()) {
+			std::cerr << "Error parsing XML: " << xmlreader.errorString().toStdString() << std::endl;
+			goto jmp_ERROR_CLOSE;
 		}
 	}
 
@@ -277,7 +280,7 @@ int main(int argn, char **argv){
 	jmp_ERROR_CLOSE:
 	// Free the QFile for the output before exiting if it was allocated.
 	if(parser.isSet(outputoption)) {
-		delete outputfile.device();
+			delete outputfile.device();
 	}
 
 	return 0;
