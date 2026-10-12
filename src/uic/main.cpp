@@ -195,11 +195,11 @@ int main(int argn, char **argv){
 									if(value == "local") {
 										localorsystem = LOCAL;
 									}else if (value != "system") {
-										std::cerr << "Unknown value for attribute location in " << Include.toStdString() << " tag." << '\n';
+										std::cerr << "Unknown value for attribute location in " << TagInclude.toStdString() << " tag." << '\n';
 										goto jmp_ERROR_CLOSE;
 									}
 								}else {
-									std::cerr << "Unknown attribute in " << Include.toStdString() << " tag." << '\n';
+									std::cerr << "Unknown attribute in " << TagInclude.toStdString() << " tag." << '\n';
 									goto jmp_ERROR_CLOSE;
 								}
 							}
@@ -236,7 +236,7 @@ int main(int argn, char **argv){
 							}
 
 							if(classname == Empty) {
-								std::cerr << "Syntax error a `class` tag did not have an name attribute. This is mandatory." << '\n';
+								std::cerr << "Syntax error a `class` tag did not have an name attribute. This is mandatory.\n";
 								goto jmp_ERROR_CLOSE;
 							}
 
@@ -260,7 +260,7 @@ int main(int argn, char **argv){
 
 					// Check that end tag we hit was "ui".
 					if(xmlreader.name() != Ui) {
-						std::cerr << "Tag ui was not closed. Check tag endings inside of ui if ending tag exists." << '\n';
+						std::cerr << "Tag ui was not closed. Check tag endings inside of ui if ending tag exists.\n";
 					}
 
 				}else {
