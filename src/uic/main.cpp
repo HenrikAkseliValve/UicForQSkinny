@@ -185,7 +185,7 @@ int main(int argn, char **argv){
 						}else if(name == TagInclude) {
 							// Check the 'location' attribute
 							QXmlStreamAttributes attrs = xmlreader.attributes();
-							
+
 							// Assume system include by default.
 							enum {LOCAL, SYSTEM} localorsystem = SYSTEM;
 							for(int i = 0; i < attrs.size(); i++) {
