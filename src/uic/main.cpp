@@ -251,7 +251,7 @@ int main(int argn, char **argv){
 								std::cerr << "Tag struct was not closed. Check tag endings inside of struct if ending tag exists.\n";
 							}
 
-							outputfile << QByteArray("}\n");
+							outputfile << QByteArray("};\n");
 						}else {
 							std::cerr << "Unknown tag found as child of ui tag." << '\n';
 							goto jmp_ERROR_CLOSE;
