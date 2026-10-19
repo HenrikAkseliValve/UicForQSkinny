@@ -28,6 +28,24 @@
 #define VERSION_STR QT_STRINGIFY(VERSION)
 
 /*
+ * Control node is the n-tree node representing a control. Tree is generated parent to child. Parent only connections
+ * to one sibling which connections to other childer. This done because easy dynamic response and we most likelly two
+ * pass the generatation.
+*/
+typedef struct ControlNode{
+	// Pointer to first child of this control which through you get the other childern.
+	struct ControlNode *children;
+	// Pointer to sibling of this control.
+	struct ControlNode *sibling;
+	// Pointer to the parent control.
+	struct ControlNode *parent;
+	// Name of the control.
+	QString control_name;
+	// Name of the variable in the structure.
+	QString variable_name;
+}ControlNode;
+
+/*
  * Sepcial variable to indicate empty string. Used as intialization for some QStrings.
 */
 static const QString Empty = QStringLiteral("");
@@ -71,6 +89,19 @@ QString static parse_text_tag(QXmlStreamReader *reader, QString nodename) {
 		std::cerr << "Inside " << nodename.toStdString() << " tag must be text." << '\n';
 		exit(1);
 	}
+}
+
+/*
+ * Allocate new control node with default initialization on some members and others given as parameters.
+*/
+static ControlNode* allocate_control_node(QString cntrlname, QString varname, ControlNode *parent) {
+	ControlNode *newnode = new ControlNode;
+	newnode->children = nullptr;
+	newnode->sibling = nullptr;
+	newnode->parent = parent;
+	newnode->control_name = cntrlname;
+	newnode->variable_name = varname;
+	return newnode;
 }
 
 /*
@@ -133,6 +164,10 @@ int main(int argn, char **argv){
 		// Default to standard output.
 		new(&outputfile) QTextStream(stdout, QIODeviceBase::OpenMode::enum_type::WriteOnly);
 	}
+
+	// Pointer to the first children of the root control.
+	// NOTE: Root does not exist as ControlNode.
+	ControlNode *treeroot;
 
 	{
 		// String to store information used in overviwer comment.
@@ -242,16 +277,72 @@ int main(int argn, char **argv){
 
 							// Start generating the struct
 							outputfile << QByteArray("struct ") << classname << " {\n";
-							while(xmlreader.readNext() != QXmlStreamReader::EndElement){
-								;
-							}
 
-							// Check that end tag we hit was "struct".
-							if(xmlreader.name() != TagStruct) {
-								std::cerr << "Tag struct was not closed. Check tag endings inside of struct if ending tag exists.\n";
+							// Processing head for the treeroot.
+							// Initialized to the address of treeroot so that first child can be allocated like there is `ControlNode`.
+							ControlNode *processinghead = (ControlNode*)&treeroot;
+
+							while((token = xmlreader.readNext()) != QXmlStreamReader::EndElement || xmlreader.name() != TagStruct) {
+								switch(token) {
+									case QXmlStreamReader::TokenType::Invalid:
+										std::cerr << "Invalid token encountered.\n";
+										goto jmp_ERROR_CLOSE;
+									case QXmlStreamReader::TokenType::StartElement:
+										{
+											QStringView name = xmlreader.name();
+											if(false) {
+												//TODO: Other stuff.
+											}
+											else {
+												if (name.startsWith(QString("c."))){
+													if(name.length() == 2){
+														std::cerr << "Syntax error. No control class was given after \"c.\".";
+														goto jmp_ERROR_CLOSE;
+													}
+													name = name.slice(2);
+												}
+
+												QStringView varname = QStringView();
+												for(auto attribute : xmlreader.attributes()){
+													QStringView attrname = attribute.name();
+													if (attrname == "name"){
+														varname = attribute.value();
+													}
+													else{
+														std::cerr << "Unknown attribute for a control.\n";
+														goto jmp_ERROR_CLOSE;
+													}
+												}
+
+												if (varname.isNull()){
+														std::cerr << "Control must have name attribute so that variable can be created.\n";
+														goto jmp_ERROR_CLOSE;
+												}
+
+												// Create controller node for the tree.
+												ControlNode *newnode = allocate_control_node(QString(name), QString(varname), processinghead);
+
+												// Move processing head to the new child.
+												processinghead->children = newnode;
+												processinghead = newnode;
+
+												// Add control to the data structure.
+												outputfile << '\t' << name << " *" << varname << ";" << "\n";
+											}
+										}
+										break;
+									case QXmlStreamReader::TokenType::EndElement:
+										// Move to parent as all of the siblings have been processed.
+										processinghead = processinghead->parent;
+
+										// We need to check that tag ending is the
+
+										break;
+								}
 							}
 
 							outputfile << QByteArray("};\n");
+
 						}else {
 							std::cerr << "Unknown tag found as child of ui tag." << '\n';
 							goto jmp_ERROR_CLOSE;
@@ -274,6 +365,31 @@ int main(int argn, char **argv){
 			std::cerr << "Error parsing XML: " << xmlreader.errorString().toStdString() << std::endl;
 			goto jmp_ERROR_CLOSE;
 		}
+	}
+
+	// Second pass to the node tree.
+	// We first go to deep and then start processing siblings, if sibling has children process them and go up the tree.
+	//
+	// Free the memory as you go so that we do not need to have third pass for the memory freeing good points.
+	// TODO: Do something more than free memory.
+	while (treeroot->children != nullptr){
+		treeroot = treeroot->children;
+	}
+	ControlNode *temp;
+	while (treeroot != (ControlNode*)&treeroot){
+		temp = treeroot;
+		while (treeroot->sibling != nullptr){
+			treeroot = treeroot->sibling;
+			delete temp;
+			
+			while (treeroot->children != nullptr){
+				treeroot = treeroot->children;
+			}
+
+			temp = treeroot;
+		}
+		treeroot = treeroot->parent;
+		delete temp;
 	}
 
 	outputfile.flush();
