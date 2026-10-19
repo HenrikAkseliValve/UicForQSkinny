@@ -129,7 +129,7 @@ For our Qskinny UIC format root tag is "<ui>" like Qt's UIC format.
 	| <control>                                                 | This tag means everything that is not keyword under struct is interperted |
 	|                                                           | as control.                                                               |
 	|                                                           |                                                                           |
-	|                                                           | Note that if needed every control is assumed to be child of `QskControl`. |
+	|                                                           | Note that if needed every control is assumed to be child of `QskItem`.    |
 	|                                                           |                                                                           |
 	|                                                           | Since origin.                                                             |
 	+========================+==================================+===========================================================================+
