@@ -42,6 +42,11 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	|                        |                                  |                                                                           |
 	|                        |                                  | Since origin.                                                             |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
+	|                        | c.<control>                      | It makes more sense to have controls under struct tag since globally      |
+	|                        | <control>                        | there is no parent for those controls.                                    |
+	|                        |                                  |                                                                           |
+	|                        |                                  | Since origin.                                                             |
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 
 .. table::
 	:widths: 25 25 50
