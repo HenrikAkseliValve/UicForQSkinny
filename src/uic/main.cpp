@@ -133,7 +133,7 @@ static void generate_controls_setup(QTextStream &stream, ControlNode *node) {
 /*
  * Start of the program. Drives the compilation.
 */
-int main(int argn, char **argv){
+int main(int argn, char **argv) {
 
 	QCoreApplication app(argn, argv);
 	QCoreApplication::setApplicationName(PROGNAME_STR);
