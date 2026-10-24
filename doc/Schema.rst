@@ -11,6 +11,8 @@ XML format is selected over Qt's QML format or somekinda INI format, because:
 
 For our Qskinny UIC format root tag is "<ui>" like Qt's UIC format.
 
+Note that in tables below tag names may have text surrounded by "<" ">". These means variable text!
+
 .. table::
 	:widths: 25 25 50
 
