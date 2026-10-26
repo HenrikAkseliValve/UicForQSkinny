@@ -17,10 +17,10 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	:widths: 25 25 50
 
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	| ui                                                        | Root tag for QSkinny UIC Schema.                                          |
+	| **ui**                                                    | Root tag for QSkinny UIC Schema.                                          |
 	|                                                           |                                                                           |
 	|                                                           | Since origin.                                                             |
-	+========================+==================================+===========================================================================+
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	| Attributes             | Version                          | Version of the schema. Only accaptable value is "0.0".                    |
 	|                        |                                  |                                                                           |
 	|                        |                                  | Optional. Defaults to latests version.                                    |
@@ -52,11 +52,11 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	:widths: 25 25 50
 
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	| exportmacro                                               | Name of the export / import macro used when fuction is marked to be       |
+	| **exportmacro**                                           | Name of the export / import macro used when fuction is marked to be       |
 	|                                                           | exported.                                                                 |
 	|                                                           |                                                                           |
 	|                                                           | Since origin.                                                             |
-	+========================+==================================+===========================================================================+
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	| Acceptable children    | General text                     | Since origin.                                                             |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 
@@ -64,10 +64,10 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	:widths: 25 25 50
 
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	| author                                                    | Name of the author which created the Schema. Used in overview comment.    |
+	| **author**                                                | Name of the author which created the Schema. Used in overview comment.    |
 	|                                                           |                                                                           |
 	|                                                           | Since origin.                                                             |
-	+========================+==================================+===========================================================================+
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	| Acceptable children    | General text                     | Since origin.                                                             |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 
@@ -75,10 +75,10 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	:widths: 25 25 50
 
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	| description                                               | User defined description that is placed in the overviwer comment.         |
+	| **description**                                           | User defined description that is placed in the overviwer comment.         |
 	|                                                           |                                                                           |
 	|                                                           | Since origin.                                                             |
-	+========================+==================================+===========================================================================+
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	| Acceptable children    | General text                     | Since origin.                                                             |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 
@@ -86,11 +86,11 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	:widths: 25 25 50
 
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	| exportmacro                                               | Name of the export / import macro used when fuction is macroed to be      |
+	| **exportmacro**                                           | Name of the export / import macro used when fuction is macroed to be      |
 	|                                                           | exported.                                                                 |
 	|                                                           |                                                                           |
 	|                                                           | Since origin.                                                             |
-	+========================+==================================+===========================================================================+
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	| Acceptable children    | General text                     | Since origin.                                                             |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 
@@ -98,10 +98,10 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	:widths: 25 25 50
 
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	| include                                                   | Added include directive to the generated header file.                     |
+	| **include**                                               | Added include directive to the generated header file.                     |
 	|                                                           |                                                                           |
 	|                                                           | Since origin.                                                             |
-	+========================+==================================+===========================================================================+
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	| Attributes             | location                         | Ether "system" for "<" ">" enclosed include or "local" for """ enclosed.  |
 	|                        |                                  |                                                                           |
 	|                        |                                  | Optional. Defaults to "system".                                           |
@@ -114,11 +114,11 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	:widths: 25 25 50
 
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	| struct                                                    | Start generating a UI class. Under this tag go properties and             |
+	| **struct**                                                | Start generating a UI class. Under this tag go properties and             |
 	|                                                           | subcontrols.                                                              |
 	|                                                           |                                                                           |
 	|                                                           | Since origin.                                                             |
-	+========================+==================================+===========================================================================+
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	| Attributes             | name                             | Name of the class to generate.                                            |
 	|                        |                                  |                                                                           |
 	|                        |                                  | Mandatory.                                                                |
@@ -132,14 +132,14 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	:widths: 25 25 50
 
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	| c.<control>                                               | Control named <control>. "c." version is to allow keyword named controls. |
-	| <control>                                                 | This tag means everything that is not keyword under struct is interperted |
+	| **c.<control>**                                           | Control named <control>. "c." version is to allow keyword named controls. |
+	| **<control>**                                             | This tag means everything that is not keyword under struct is interperted |
 	|                                                           | as control.                                                               |
 	|                                                           |                                                                           |
 	|                                                           | Note that if needed every control is assumed to be child of `QskItem`.    |
 	|                                                           |                                                                           |
 	|                                                           | Since origin.                                                             |
-	+========================+==================================+===========================================================================+
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	| Attributes             | name                             | Variable name of the control.                                             |
 	|                        |                                  |                                                                           |
 	|                        |                                  | Mandatory.                                                                |
