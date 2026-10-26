@@ -43,8 +43,8 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	|                        |                                  | Since origin.                                                             |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	|                        | c.<control>                      | It makes more sense to have controls under struct tag since globally      |
-	|                        | <control>                        | there is no parent for those controls.                                    |
-	|                        |                                  |                                                                           |
+	|                        |                                  | there is no parent for those controls.                                    |
+	|                        | <control>                        |                                                                           |
 	|                        |                                  | Since origin.                                                             |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 
@@ -125,6 +125,7 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	|                        |                                  | Since origin.                                                             |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	| Acceptable children    | c.<control>                      | Since origin.                                                             |
+	|                        |                                  |                                                                           |
 	|                        | <control>                        |                                                                           |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 
@@ -133,8 +134,8 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	| **c.<control>**                                           | Control named <control>. "c." version is to allow keyword named controls. |
-	| **<control>**                                             | This tag means everything that is not keyword under struct is interperted |
-	|                                                           | as control.                                                               |
+	|                                                           | This tag means everything that is not keyword under struct is interperted |
+	| **<control>**                                             | as control.                                                               |
 	|                                                           |                                                                           |
 	|                                                           | Note that if needed every control is assumed to be child of `QskItem`.    |
 	|                                                           |                                                                           |
