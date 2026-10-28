@@ -163,6 +163,28 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	:widths: 25 25 50
 
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
+	| **properties**                                            | Tags under this tag default to be interperted as properties. This allows  |
+	|                                                           | <property> tag to be used. p.<property> is still allowed.                 |
+	|                                                           |                                                                           |
+	|                                                           | Since origin.                                                             |
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
+	| Acceptable children    | <property>                       | Since origin.                                                             |
+	|                        | p.<property>                     |                                                                           |
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
+	| Not Acceptable child   | c.<control>                      | It does not make sense have control as property. It should be a child of  |
+	|                        |                                  | the control.                                                              |
+	|                        | <control>                        |                                                                           |
+	|                        |                                  | Since origin.                                                             |
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
+	|                        | General text                     | About what? We need properties not random text.                           |
+	|                        |                                  |                                                                           |
+	|                        |                                  | Since origin.                                                             |
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
+
+.. table::
+	:widths: 25 25 50
+
+	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	| **p.<property>**                                          | Sets controls property <property> to value described inside this tag.     |
 	|                                                           |                                                                           |
 	| **<property>**                                            | NOTE: Tag <property> can be used only under properties tag.               |
@@ -184,28 +206,6 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 	|                        | <property>                       | We are already setting a property so it does not make sense start setting |
 	|                        |                                  | an other one.                                                             |
-	|                        |                                  |                                                                           |
-	|                        |                                  | Since origin.                                                             |
-	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-
-.. table::
-	:widths: 25 25 50
-
-	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	| **properties**                                            | Tags under this tag default to be interperted as properties. This allows  |
-	|                                                           | <property> tag to be used. p.<property> is still allowed.                 |
-	|                                                           |                                                                           |
-	|                                                           | Since origin.                                                             |
-	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	| Acceptable children    | <property>                       | Since origin.                                                             |
-	|                        | p.<property>                     |                                                                           |
-	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	| Not Acceptable child   | c.<control>                      | It does not make sense have control as property. It should be a child of  |
-	|                        |                                  | the control.                                                              |
-	|                        | <control>                        |                                                                           |
-	|                        |                                  | Since origin.                                                             |
-	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	|                        | General text                     | About what? We need properties not random text.                           |
 	|                        |                                  |                                                                           |
 	|                        |                                  | Since origin.                                                             |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
