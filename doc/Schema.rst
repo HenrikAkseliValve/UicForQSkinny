@@ -188,7 +188,7 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	| **p.<property>**                                          | Sets controls property <property> to value described inside this tag.     |
 	|                                                           |                                                                           |
 	| **<property>**                                            | NOTE: Tag <property> can be used only under properties tag.               |
-	|                                                           | NOTE: If same property can be set twice which causes latter to win.       |
+	|                                                           | NOTE: Same property can be set multiple times which causes latest to win. |
 	|                                                           |                                                                           |
 	|                                                           | Since origin.                                                             |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
