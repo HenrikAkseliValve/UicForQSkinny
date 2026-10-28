@@ -7,3 +7,10 @@ qskuic
 # Ignore CMake build directories
 build
 release
+
+# Ignore project files.
+.kdev4
+*.kdev4
+.kateproject.build
+.vscode
+compile_commands.json
