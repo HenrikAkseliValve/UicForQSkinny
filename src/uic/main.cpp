@@ -6,6 +6,7 @@
 #include <QtCore/QFile>
 #include <QtCore/QTextStream>
 #include <QtCore/QString>
+#include <QStack>
 #include <QtCore/QXmlStreamReader>
 #include <qskinny/QskGlobal.h>
 #include <iostream>
@@ -27,7 +28,115 @@
 #endif
 #define VERSION_STR QT_STRINGIFY(VERSION)
 
-typedef QPair<QString, QString> ControlProperty;
+/*
+ * Types of value types. Each of these has it's own tag.
+*/
+enum ValueType {
+	OBJECT,
+	NUMBER,
+	QSTRING,
+	CSTRING,
+	SSTRING,
+	BOOL,
+	RECT,
+};
+
+// See below this is just forward dec.
+struct ValueObjectType;
+struct ValueString;
+struct ValueRect;
+
+/*
+* Types of structures parameter list may point to.
+*/
+union ParameterListTypes {
+	void *shadow;
+	ValueType *type;
+	ValueString *str;
+	ValueObjectType *obj;
+	ValueRect *rect;
+	
+	ParameterListTypes(ValueString *str){
+		this->str = str;
+	}
+
+	ParameterListTypes(ValueObjectType *obj){
+		this->obj = obj;
+	}
+
+	ParameterListTypes(ValueRect *rect){
+		this->rect = rect;
+	}
+};
+
+/*
+* Alias QList for the parametrers list.
+*/
+typedef QList<union ParameterListTypes> ParameterList;
+
+/*
+ * For simple value type structure stored is just QString since we just pasting it to the output.
+*/
+typedef struct ValueString {
+	// Type of value this is.
+	ValueType type;
+	// Value for the type.
+	QString value;
+
+	ValueString(ValueType type, QString value) {
+		this->type = type;
+		this->value = value;
+	}
+} ValueString;
+
+/*
+* Object valie type is special as the it has it's own ParameterList for the constructor.
+*/
+typedef struct ValueObjectType {
+	// Type of the value. Must be `ValueType::OBJECT`.
+	ValueType type;
+	// Name of the object.
+	QString objname;
+	// List of parameters to the constructor of the object.
+	ParameterList parameters;
+
+	/*
+	* Since there is only one type force it by constructor. Also for object name.
+	*/
+	ValueObjectType(QString objname) {
+		this->type = ValueType::OBJECT;
+		this->objname = objname;
+		this->parameters = ParameterList();
+	}
+
+} ValueObjectType;
+
+/*
+* Special type for the QRect. QRect is not used since QString is used in generation anyway.
+*/
+typedef struct ValueRect {
+	// Type must be QRect.
+	ValueType type;
+	// Corresponce to QRect::x
+	QString x;
+	// Corresponce to QRect::y
+	QString y;
+	// Corresponce to QRect::width
+	QString width;
+	// Corresponce to QRect::height
+	QString height;
+
+} ValueObjectRect;
+
+/*
+ * Structure for the controls property.
+*/
+typedef struct ControlProperty {
+	// Name of the property.
+	QString property;
+	// List of the parameters for the set method.
+	ParameterList parameters;
+} ControlProperty;
 
 /*
  * Control node is the n-tree node representing a control. Tree is generated parent to child. Parent only connections
@@ -49,14 +158,23 @@ typedef struct ControlNode{
 	// Name of the control.
 	QString control_name;
 	// Properties to be set during the setup call.
-	QList<ControlProperty> properties;
+	QList<ControlProperty*> properties;
 	// Flag zone for the control to save memory on bools.
 	struct {
 		// Indicates was the control prefixed with "c:" or not when parsed.
 		// TODO: Is there a way get rid of this....
 		bool prefixed:1;
 	} flags;
-}ControlNode;
+
+	~ControlNode(){
+		// We need to deallocate the properties.
+		// We do not deallocate ConrolNode pointers to keep a processing not hit free after use.
+		for(auto prop : this->properties) {
+			delete prop;
+		}
+	}
+
+} ControlNode;
 
 /*
  * Sepcial variable to indicate empty string. Used as intialization for some QStrings.
@@ -72,11 +190,17 @@ static const QString TagAuthor = QStringLiteral("author");
 static const QString TagDescription = QStringLiteral("description");
 static const QString TagInclude = QStringLiteral("include");
 static const QString TagStruct = QStringLiteral("struct");
+static QString TagObject = QStringLiteral("object");
 
 /*
  * Just string for the "->" which is used in C/C++ reference member of pointer.
 */
 static const QString RefPointer = QStringLiteral("->");
+
+/*
+ * Just a zero for returning a zero from special case parsing.
+*/
+static const QString Zero = QStringLiteral("0");
 
 /*
  * Parse a internals of pure text tag. Needs tag name for the error messages.
@@ -110,20 +234,241 @@ static QString parse_text_tag(QXmlStreamReader *reader, QString nodename) {
 }
 
 /*
+ * If tag only accepts an integer child this function can be used to parse the result.
+*/
+static QString parse_integer_tag(QXmlStreamReader *reader, QString nodename, bool &ok) {
+	QString text = parse_text_tag(reader, nodename);
+
+	// If we get empty text we interpert it as zero.
+	if(text.isEmpty()) {
+		ok = true;
+		return Zero;
+	}
+
+	// Check if the text is a valid integer representation
+	int i = 0;
+
+	// Check for optional sign
+	if(text[0] == '+' || text[0] == '-') {
+		i = 1;
+		// If we only have sign we do not consider string valid number.
+		if(text.length() == 1) {
+			ok = false;
+			return Empty;
+		}
+	}
+
+	// Check remaining characters are digits
+	for(; i < text.length(); i++) {
+		if(!text[i].isDigit()) {
+			ok = false;
+			return Empty;
+		}
+	}
+
+	ok = true;
+	return text;
+}
+/*
+ * Parse a floating point from the text string.
+*/
+static QString parse_float_tag(QXmlStreamReader *reader, QString nodename, bool &ok) {
+	QString text = parse_text_tag(reader, nodename);
+
+	// Check if the text is a valid float representation
+	int i = 0;
+
+	// Special handle case where string is empty. This is interperted as zero.
+	if(text.isEmpty()){
+		ok = true;
+		return Zero;
+	}
+
+	// Check for optional sign
+	if(text[0] == '+' || text[0] == '-') {
+		i = 1;
+		// If only sign is given we consider that invalid.
+		if(text.length() == 1) {
+			ok = false;
+			return Empty;
+		}
+	}
+
+	for(; i < text.length(); i++) {
+		if(text[i] == '.') {
+			// We have found a digit so now we can speed up dectection by
+			// just checking everything is a digit.
+			i++;
+			for(; i < text.length(); i++) {
+				if(!text[i].isDigit()) {
+					ok = false;
+					return Empty;
+				}
+			}
+
+			break;
+		}
+		else if (!text[i].isDigit()){
+			ok = false;
+			return Empty;
+		}
+	}
+
+	ok = true;
+	return text;
+}
+
+
+/*
 * Parses the property tag that was hit during processing. Property name, tag of that property can be different.
 * For example: Tag "p.Text" will have propname is "Text" but tagname is still "p.Text".
 */
-static ControlProperty parse_property_tag(QXmlStreamReader *reader, QString tagname, QString propname) {
-	// Parse the text content
-	QString value = parse_text_tag(reader, tagname);
-	
-	return ControlProperty(propname, value);
+static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tagname, QString propname) {
+	// Support macro for the repeative task of freeing allocated memory in-case of
+	// parsing error.
+	#define RETURN_ERROR \
+	{                    \
+		delete prop;       \
+		return nullptr;    \
+	}                    \
+
+	// Allocate the new property first so it is clear where parameters are stored and at error we have to free
+	// what we allocated.
+	auto prop = new ControlProperty;
+	prop->property = propname;
+	prop->parameters = ParameterList();
+
+	// Since object tag takes in same tags as properties use stack to push what list is been updated.
+	typedef QPair<ParameterList&, QString&> StackSlot;
+	QStack<StackSlot> stack;
+	stack.push(QPair<ParameterList&, QString&>(prop->parameters, tagname));
+
+	QXmlStreamReader::TokenType token;
+	do{
+		while((token = reader->readNext()) && !reader->atEnd() && token != QXmlStreamReader::TokenType::EndElement) {
+
+			switch(token) {
+				case QXmlStreamReader::TokenType::StartElement:
+				{
+					QStringView name = reader->name();
+					if(name == TagObject){
+
+						// TODO: Parse the attribute for the name.
+						QString nameobj = "foo";
+
+						// Allocate an object and place push to a stack next new parameter list.
+						auto object = new ValueObjectType(nameobj);
+						ParameterList& list = stack.top().first;
+						list.append(object);
+
+						stack.push(StackSlot(object->parameters, TagObject));
+					}
+					else if(name == "number"){
+						bool ok;
+						QString number = parse_float_tag(reader, "number", ok);
+						if (!ok) return nullptr;
+						stack.top().first.append(new ValueString(ValueType::NUMBER, number));
+					}
+					else if(name == "qstring"){
+						stack.top().first.append(new ValueString(ValueType::QSTRING, parse_text_tag(reader, "qstring")));
+					}
+					else if(name == "cstring"){
+						stack.top().first.append(new ValueString(ValueType::CSTRING, parse_text_tag(reader, "cstring")));
+					}
+					else if(name == "sstring"){
+						stack.top().first.append(new ValueString(ValueType::SSTRING, parse_text_tag(reader, "sstring")));
+					}
+					else if (name == "bool") {
+						QString boolean = parse_text_tag(reader, "bool");
+						// Check that we have ether true or false or any upper case variant.
+						//
+						// NOTE: Qt's `QString::toLower()` makes a copy so we are avoiding that here.
+						int len = boolean.length();
+						if (len == 4){
+							// Is it true?
+							for(int i = 0; i < 4; i++) {
+								boolean[i] = boolean[i].toLower();
+							}
+							if (boolean != "true"){
+								// TODO: Better message.
+								std::cerr << "Syntax error!\n";
+								RETURN_ERROR
+							}
+						}
+						else if (len == 5){
+							// Is is false
+							for(int i = 0; i < 5; i++) {
+								boolean[i] = boolean[i].toLower();
+							}
+							if (boolean != "false"){
+								// TODO: Better message.
+								std::cerr << "Syntax error!\n";
+								RETURN_ERROR
+							}
+						}
+						// TODO: Better message.
+						else std::cerr << "Syntax error!\n";
+
+						stack.top().first.append(new ValueString(ValueType::BOOL, boolean));
+					}
+					else if (name == "rect") {
+
+						// Allocate the rectangle and then use try fill it in.
+						auto rect = new ValueRect();
+						rect->type = ValueType::RECT;
+
+						while ((token = reader->readNext()) && token != QXmlStreamReader::TokenType::EndElement && !reader->atEnd()){
+							switch(token) {
+								case QXmlStreamReader::TokenType::StartElement:
+									{
+										bool ok;
+										name = reader->name();
+
+										QString value = parse_integer_tag(reader, QString(name), ok);
+										if(name == "x") rect->x = value;
+										else if(name == "y") rect->y = value;
+										else if(name == "width") rect->width = value;
+										else if(name == "height") rect->height = value;
+
+										stack.top().first.append(rect);
+									}
+									break;
+								}
+							}
+							stack.top().first.append(rect);
+					}
+					else {
+						std::cerr << "Unknown tag under "<< tagname.toStdString() << " tag. Tag found was \"" << name.toString().toStdString() << "\".\n";
+						RETURN_ERROR
+					}
+					break;
+				}
+				case QXmlStreamReader::TokenType::Characters:
+					if (reader->isWhitespace()){
+						continue;
+					}
+					std::cerr << "Tag " << tagname.toStdString() << " does not support general text.\n";
+					RETURN_ERROR
+			}
+		}
+		
+		// Checking that property tag was ended.
+		if(reader->name() != stack.top().second) {
+			std::string str = stack.top().second.toStdString();
+			std::cerr << "Tag "<< str << " was not closed. Check tag endings inside of " << str << " if ending tag exists.\n";
+			RETURN_ERROR
+		}
+		stack.pop();
+	} while(!stack.isEmpty());
+
+	return prop;
+	#undef RETURN_ERROR
 }
 
 /*
  * Handles p.<property> tag when caller knows that is the tag. Done mostly to get same error message to multiple place in code.
 */
-static ControlProperty parse_pdotproperty_tag(QXmlStreamReader *reader, QString tagname){
+static ControlProperty *parse_pdotproperty_tag(QXmlStreamReader *reader, QString tagname){
 	if (tagname.length() <= 2) {
 		std::cerr << "Syntax error. No property name was given after \"p.\" in property tag.\n";
 		exit(1);
@@ -150,6 +495,13 @@ static ControlNode* allocate_control_node(QString cntrlname, QString varname, Co
 }
 
 /*
+ * Add given string to the stream by adding quotes around it.
+*/
+static void generate_controls_setup_string_helper(QTextStream &stream, QString& value){
+	stream << "\"" << value << "\"";
+}
+
+/*
  * Generate the setup commands for given control.
 */
 static void generate_controls_setup(QTextStream &stream, ControlNode *node) {
@@ -162,9 +514,43 @@ static void generate_controls_setup(QTextStream &stream, ControlNode *node) {
 
 	// Generate property setters.
 	for(auto &property : node->properties) {
-		QString propname = property.first;
-		QString propvalue = property.second;
-		stream << "\t\t" << node->variable_name << RefPointer << "set" << propname << "(\"" << propvalue << "\");\n";
+		QString propname = property->property;
+		
+		stream << "\t\t" << node->variable_name << RefPointer << "set" << propname << "(";
+
+		// How paramter is given out depends upon it's type.
+		ParameterListTypes types = property->parameters.at(0);
+		switch (*types.type){
+			case ValueType::OBJECT:
+				//TODO: Handle internal parameter list.
+				stream << types.obj->objname << "(";
+				break;
+			case ValueType::RECT:
+				stream << "QRect(" << types.rect->x << types.rect->y << types.rect->width << types.rect->height << ")";
+				break;
+			case ValueType::NUMBER:
+			case ValueType::BOOL:
+				// We have previously already handled the number and bool to be
+				// correct format so we can just push them to the stream.
+				stream << types.str->value;
+				break;
+			case ValueType::CSTRING:
+				// Regular char string we just have to add quotes around value.
+				generate_controls_setup_string_helper(stream, types.str->value);
+				break;
+			case ValueType::QSTRING:
+				stream << "QString(";;
+				generate_controls_setup_string_helper(stream, types.str->value);
+				stream << ")";
+				break;
+			case ValueType::SSTRING:
+				stream << "std::String(";
+				generate_controls_setup_string_helper(stream, types.str->value);
+				stream << ")";
+				break;
+		}
+		stream << ");\n";
+
 	}
 
 	// Have some space at the end for confurtable human review.
@@ -372,7 +758,7 @@ int main(int argn, char **argv) {
 													}
 													else if(token == QXmlStreamReader::StartElement) {
 														QString tagname = QString(xmlreader.name());
-														QPair<QString, QString> prop;
+														ControlProperty *prop;
 														// Here we expect ether p.<property> or <property> tag.
 														if(tagname.startsWith(QString("p."))) {
 															prop = parse_pdotproperty_tag(&xmlreader, tagname);
@@ -380,6 +766,8 @@ int main(int argn, char **argv) {
 														else {
 															prop = parse_property_tag(&xmlreader, tagname, tagname);
 														}
+														if (prop == nullptr) goto jmp_ERROR_CLOSE;
+
 														processinghead->properties.append(prop);
 													}
 													else {
@@ -391,6 +779,7 @@ int main(int argn, char **argv) {
 												// We have property directly under control without properties tag.
 
 												auto prop = parse_pdotproperty_tag(&xmlreader, QString(name));
+												if (prop == nullptr) goto jmp_ERROR_CLOSE;
 												processinghead->properties.append(prop);
 											}
 											else {
