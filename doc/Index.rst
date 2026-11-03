@@ -1,6 +1,6 @@
-##########################
-QSkinny UIC Documentation
-##########################
+##############################
+UIC for QSkinny Documentation
+##############################
 
 .. toctree::
 	:maxdepth: 2
