@@ -318,6 +318,17 @@ static QString parse_float_tag(QXmlStreamReader *reader, QString nodename, bool 
 	return text;
 }
 
+/*
+* Moves reader to next token and returns is document end reached or end element not reached.
+* Moves over any whitespace characters and comments.
+*/
+static inline bool was_moved_to_next_token_in_element(QXmlStreamReader *reader, QXmlStreamReader::TokenType &token){
+	bool ok;
+	do{
+		token = reader->readNext();
+	}while(((token == QXmlStreamReader::Characters && reader->isWhitespace()) || token == QXmlStreamReader::Comment) && !reader->atEnd());
+	return !reader->atEnd() && token != QXmlStreamReader::TokenType::EndElement;
+}
 
 /*
 * Parses the property tag that was hit during processing. Property name, tag of that property can be different.
@@ -345,7 +356,7 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 
 	QXmlStreamReader::TokenType token;
 	do{
-		while((token = reader->readNext()) && !reader->atEnd() && token != QXmlStreamReader::TokenType::EndElement) {
+		while(was_moved_to_next_token_in_element(reader, token)) {
 
 			switch(token) {
 				case QXmlStreamReader::TokenType::StartElement:
@@ -648,13 +659,7 @@ int main(int argn, char **argv) {
 
 					// Read all children of the "ui" element.
 					// If we hit EndElement it must be end of "ui" tag.
-					while((token = xmlreader.readNext()) != QXmlStreamReader::EndElement && !xmlreader.hasError()) {
-
-						// Every newline and whitespace is reported as a character node.
-						// We could skip to next element but that would assume user has made perfect syntax and no character node
-						// was but in error. Hence, we need to handle the characters nodes and check `isWhitespace` to report
-						// error and allow whitespace.
-						if((token == QXmlStreamReader::Characters && xmlreader.isWhitespace()) || token == QXmlStreamReader::Comment) continue;
+					while(was_moved_to_next_token_in_element(&xmlreader, token)) {
 
 						name = xmlreader.name();
 						if(name == TagExportMacro) {
@@ -742,7 +747,7 @@ int main(int argn, char **argv) {
 							// Initialized to the address of treeroot so that first child can be allocated like there is `ControlNode`.
 							ControlNode *processinghead = (ControlNode*)&tree;
 
-							while((token = xmlreader.readNext()) != QXmlStreamReader::EndElement || xmlreader.name() != TagStruct) {
+							while(was_moved_to_next_token_in_element(&xmlreader, token) || xmlreader.name() != TagStruct) {
 								switch(token) {
 									case QXmlStreamReader::TokenType::Invalid:
 										std::cerr << "Invalid token encountered.\n";
@@ -752,11 +757,8 @@ int main(int argn, char **argv) {
 											QStringView name = xmlreader.name();
 											if (name == "properties") {
 												// We expect only properties of the current control here on out. Parse untill end of the tag is reached.
-												while((token = xmlreader.readNext()) != QXmlStreamReader::EndElement && !xmlreader.hasError()) {
-													if((token == QXmlStreamReader::Characters && xmlreader.isWhitespace()) || token == QXmlStreamReader::Comment) {
-														continue;
-													}
-													else if(token == QXmlStreamReader::StartElement) {
+												while(was_moved_to_next_token_in_element(&xmlreader, token)) {
+													if(token == QXmlStreamReader::StartElement) {
 														QString tagname = QString(xmlreader.name());
 														ControlProperty *prop;
 														// Here we expect ether p.<property> or <property> tag.
