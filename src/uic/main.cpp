@@ -47,7 +47,7 @@ struct ValueString;
 struct ValueRect;
 
 /*
-* Types of structures parameter list may point to.
+ * Types of structures parameter list may point to.
 */
 union ParameterListTypes {
 	void *shadow;
@@ -70,7 +70,7 @@ union ParameterListTypes {
 };
 
 /*
-* Alias QList for the parametrers list.
+ * Alias QList for the parametrers list.
 */
 typedef QList<union ParameterListTypes> ParameterList;
 
@@ -90,7 +90,7 @@ typedef struct ValueString {
 } ValueString;
 
 /*
-* Object valie type is special as the it has it's own ParameterList for the constructor.
+ * Object valie type is special as the it has it's own ParameterList for the constructor.
 */
 typedef struct ValueObjectType {
 	// Type of the value. Must be `ValueType::OBJECT`.
@@ -112,7 +112,7 @@ typedef struct ValueObjectType {
 } ValueObjectType;
 
 /*
-* Special type for the QRect. QRect is not used since QString is used in generation anyway.
+ * Special type for the QRect. QRect is not used since QString is used in generation anyway.
 */
 typedef struct ValueRect {
 	// Type must be QRect.
