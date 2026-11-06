@@ -143,7 +143,7 @@ typedef struct ControlProperty {
  * to one sibling which connections to other childer. This done because easy dynamic response and we most likelly
  * have to multiple passes of generation.
 */
-typedef struct ControlNode{
+typedef struct ControlNode {
 	// Pointer to sibling of this control.
 	struct ControlNode *sibling;
 	// Pointer to to last child control of this control.
