@@ -269,6 +269,7 @@ static QString parse_integer_tag(QXmlStreamReader *reader, QString nodename, boo
 	ok = true;
 	return text;
 }
+
 /*
  * Parse a floating point from the text string.
 */
