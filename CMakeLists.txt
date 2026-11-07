@@ -51,6 +51,7 @@ target_link_libraries(qskuic PRIVATE Qt6::Core)
 #############################################
 # Document builder                          #
 #############################################
+project(qskinny-uic-doc)
 find_program(SPHINX_EXECUTABLE sphinx-build)
 If(SPHINX_EXECUTABLE)
 	add_custom_target(doc
