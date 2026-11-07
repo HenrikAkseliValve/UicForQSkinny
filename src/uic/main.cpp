@@ -637,7 +637,10 @@ int main(int argn, char **argv) {
 	else{
 		// Default to standard output.
 		auto stdoutqfile = new QFile();
-		stdoutqfile->open(stdout, QIODeviceBase::OpenMode::enum_type::WriteOnly);
+		if(stdoutqfile->open(stdout, QIODeviceBase::OpenMode::enum_type::WriteOnly) == false) {
+			std::cerr << "Could not open the stdout for a file?\n";
+			return 1;
+		}
 		outputfile.setDevice(stdoutqfile);
 	}
 
