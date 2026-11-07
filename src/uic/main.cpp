@@ -542,6 +542,7 @@ static void generate_controls_setup(QTextStream &stream, ControlNode *node) {
 			case ValueType::OBJECT:
 				//TODO: Handle internal parameter list.
 				stream << types.obj->objname << "(";
+				stream << ")";
 				break;
 			case ValueType::RECT:
 				stream << "QRect(" << types.rect->x << types.rect->y << types.rect->width << types.rect->height << ")";
