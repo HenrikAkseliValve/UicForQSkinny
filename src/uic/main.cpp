@@ -190,7 +190,13 @@ static const QString TagAuthor = QStringLiteral("author");
 static const QString TagDescription = QStringLiteral("description");
 static const QString TagInclude = QStringLiteral("include");
 static const QString TagStruct = QStringLiteral("struct");
-static QString TagObject = QStringLiteral("object");
+static const QString TagObject = QStringLiteral("object");
+static const QString TagNumber = QStringLiteral("number");
+static const QString TagQString = QStringLiteral("qstring");
+static const QString TagCString = QStringLiteral("cstring");
+static const QString TagSString = QStringLiteral("sstring");
+static const QString TagBool = QStringLiteral("bool");
+static const QString TagRect = QStringLiteral("rect");
 
 /*
  * Just string for the "->" which is used in C/C++ reference member of pointer.
@@ -353,7 +359,7 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 	// Since object tag takes in same tags as properties use stack to push what list is been updated.
 	typedef QPair<ParameterList&, QString&> StackSlot;
 	QStack<StackSlot> stack;
-	stack.push(QPair<ParameterList&, QString&>(prop->parameters, tagname));
+	stack.push(StackSlot(prop->parameters, tagname));
 
 	QXmlStreamReader::TokenType token;
 	do{
@@ -373,25 +379,25 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 						ParameterList& list = stack.top().first;
 						list.append(object);
 
-						stack.push(StackSlot(object->parameters, TagObject));
+						stack.push(StackSlot(object->parameters, (QString&)TagObject));
 					}
-					else if(name == "number"){
+					else if(name == TagNumber){
 						bool ok;
-						QString number = parse_float_tag(reader, "number", ok);
+						QString number = parse_float_tag(reader, TagNumber, ok);
 						if (!ok) return nullptr;
 						stack.top().first.append(new ValueString(ValueType::NUMBER, number));
 					}
-					else if(name == "qstring"){
-						stack.top().first.append(new ValueString(ValueType::QSTRING, parse_text_tag(reader, "qstring")));
+					else if(name == TagQString){
+						stack.top().first.append(new ValueString(ValueType::QSTRING, parse_text_tag(reader, TagQString)));
 					}
-					else if(name == "cstring"){
-						stack.top().first.append(new ValueString(ValueType::CSTRING, parse_text_tag(reader, "cstring")));
+					else if(name == TagCString){
+						stack.top().first.append(new ValueString(ValueType::CSTRING, parse_text_tag(reader, TagCString)));
 					}
-					else if(name == "sstring"){
-						stack.top().first.append(new ValueString(ValueType::SSTRING, parse_text_tag(reader, "sstring")));
+					else if(name == TagSString){
+						stack.top().first.append(new ValueString(ValueType::SSTRING, parse_text_tag(reader, TagSString)));
 					}
-					else if (name == "bool") {
-						QString boolean = parse_text_tag(reader, "bool");
+					else if (name == TagBool) {
+						QString boolean = parse_text_tag(reader, TagBool);
 						// Check that we have ether true or false or any upper case variant.
 						//
 						// NOTE: Qt's `QString::toLower()` makes a copy so we are avoiding that here.
@@ -423,7 +429,7 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 
 						stack.top().first.append(new ValueString(ValueType::BOOL, boolean));
 					}
-					else if (name == "rect") {
+					else if (name == TagRect) {
 
 						// Allocate the rectangle and then use try fill it in.
 						auto rect = new ValueRect();
