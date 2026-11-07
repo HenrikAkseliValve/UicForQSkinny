@@ -558,7 +558,7 @@ static void generate_controls_setup(QTextStream &stream, ControlNode *node) {
 				generate_controls_setup_string_helper(stream, types.str->value);
 				break;
 			case ValueType::QSTRING:
-				stream << "QString(";;
+				stream << "QString(";
 				generate_controls_setup_string_helper(stream, types.str->value);
 				stream << ")";
 				break;
