@@ -607,7 +607,10 @@ int main(int argn, char **argv) {
 	QXmlStreamReader xmlreader;
 	xmlreader.setDevice(&file);
 
-	QTextStream outputfile;
+	// NOTE: Constructing `QTextStream` allocates memory it is constructed.
+	//       Constructor is run for decelration alone :<
+	QTextStream outputfile = QTextStream();
+	
 	if(parser.isSet(outputoption)) {
 		// Create the output file and path.
 		std::filesystem::path outputfilepath = parser.value(outputoption).toStdString();
@@ -617,7 +620,7 @@ int main(int argn, char **argv) {
 		}
 
 		// Open the file and then aias to QDataStream for writting.
-		auto file = new QFile();
+		auto file = new QFile(outputfilepath);
 		if(file->open(QIODeviceBase::OpenMode::enum_type::Truncate | QIODeviceBase::OpenMode::enum_type::WriteOnly) == false) {
 				std::cerr << "Could not open the output file!" << '\n';
 				return 1;
@@ -627,7 +630,9 @@ int main(int argn, char **argv) {
 	}
 	else{
 		// Default to standard output.
-		new(&outputfile) QTextStream(stdout, QIODeviceBase::OpenMode::enum_type::WriteOnly);
+		auto stdoutqfile = new QFile();
+		stdoutqfile->open(stdout, QIODeviceBase::OpenMode::enum_type::WriteOnly);
+		outputfile.setDevice(stdoutqfile);
 	}
 
 	{
@@ -919,9 +924,7 @@ int main(int argn, char **argv) {
 	outputfile.flush();
 	jmp_ERROR_CLOSE:
 	// Free the QFile for the output before exiting if it was allocated.
-	if(parser.isSet(outputoption)) {
-			delete outputfile.device();
-	}
+	delete outputfile.device();
 
 	return 0;
 }
