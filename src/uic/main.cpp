@@ -23,8 +23,8 @@
 /*
  * If version number is not given from the compiler then default to "git",
 */
-#ifndef VERSION
-#define VERSION git
+#ifndef PROG_VERSION
+#define PROG_VERSION git
 #endif
 #define VERSION_STR QT_STRINGIFY(VERSION)
 

@@ -46,6 +46,8 @@ qt_add_executable(qskuic
 	src/uic/main.cpp
 )
 
+target_compile_definitions(qskuic PRIVATE PROG_VERSION=${PROJECT_VERSION})
+
 target_link_libraries(qskuic PRIVATE Qt6::Core)
 
 #############################################
