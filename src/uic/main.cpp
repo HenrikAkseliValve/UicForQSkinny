@@ -138,6 +138,23 @@ typedef struct ControlProperty {
 	ParameterList parameters;
 } ControlProperty;
 
+static void free_parameter_list(ParameterList &list) {
+	for (auto param : list) {
+		switch (*param.type){
+			case ValueType::OBJECT:
+				free_parameter_list(param.obj->parameters);
+				delete param.obj;
+				break;
+			case ValueType::RECT:
+				delete param.rect;
+				break;
+			default:
+				delete param.str;
+				break;
+			}
+	}
+}
+
 /*
  * Control node is the n-tree node representing a control. Tree is generated parent to child. Parent only connections
  * to one sibling which connections to other childer. This done because easy dynamic response and we most likelly
@@ -170,6 +187,7 @@ typedef struct ControlNode {
 		// We need to deallocate the properties.
 		// We do not deallocate ConrolNode pointers to keep a processing not hit free after use.
 		for(auto prop : this->properties) {
+			free_parameter_list(prop->parameters);
 			delete prop;
 		}
 	}
