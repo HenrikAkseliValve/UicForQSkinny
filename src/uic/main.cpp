@@ -1018,8 +1018,9 @@ int main(int argn, char **argv) {
 		}
 	}
 
-	outputfile.flush();
 	jmp_ERROR_CLOSE:
+	outputfile.flush();
+
 	// Free the QFile for the output before exiting if it was allocated.
 	delete outputfile.device();
 
