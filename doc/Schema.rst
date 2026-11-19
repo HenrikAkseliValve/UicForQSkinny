@@ -246,9 +246,10 @@ Note that in tables below tag names may have text surrounded by "<" ">". These m
 	|                        |                                  | Mandatory.                                                                |
 	|                        |                                  | Since origin.                                                             |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
-	|                        | type                             | How is created object pass as parameter. Ether "pointer" or "reference".  |
+	|                        | type                             | How is created object pass as parameter. Ether "normal", "allocated".     |
 	|                        |                                  |                                                                           |
-	|                        |                                  | Optional. Defaults to "pointer".                                          |
+	|                        |                                  |                                                                           |
+	|                        |                                  | Optional. Defaults to "allocated".                                        |
 	|                        |                                  | Since origin.                                                             |
 	+------------------------+----------------------------------+---------------------------------------------------------------------------+
 

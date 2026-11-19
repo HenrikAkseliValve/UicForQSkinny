@@ -95,17 +95,26 @@ typedef struct ValueString {
 typedef struct ValueObjectType {
 	// Type of the value. Must be `ValueType::OBJECT`.
 	ValueType type;
+	
+	// Type of the object value a.k.a reference or pointer.
+	enum ObjType {
+		NORMAL,
+		ALLOCATED,
+	} objtype;
+
 	// Name of the object.
 	QString objname;
+	
 	// List of parameters to the constructor of the object.
 	ParameterList parameters;
 
 	/*
 	* Since there is only one type force it by constructor. Also for object name.
 	*/
-	ValueObjectType(QString objname) {
+	ValueObjectType(QString objname, ObjType type) {
 		this->type = ValueType::OBJECT;
 		this->objname = objname;
+		this->objtype = type;
 		this->parameters = ParameterList();
 	}
 
@@ -387,13 +396,40 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 				case QXmlStreamReader::TokenType::StartElement:
 				{
 					QStringView name = reader->name();
-					if(name == TagObject){
+					if(name == TagObject) {
 
-						// TODO: Parse the attribute for the name.
-						QString nameobj = "foo";
+						// Default values for the Object type.
+						QString nameobj = Empty;
+						ValueObjectType::ObjType type = ValueObjectType::ObjType::ALLOCATED;
+
+						for(auto attr : reader->attributes()){
+							if(attr.name() == "name") {
+								nameobj = attr.value().toString();
+							}
+							else if(attr.name() == "type") {
+								QStringView val = attr.value();
+								if(val == "normal") {
+									type = ValueObjectType::ObjType::NORMAL;
+								}
+								else if(val == "allocated") {
+									type = ValueObjectType::ObjType::ALLOCATED;
+								}
+								else{
+									std::cerr << "ERROR: Unknown value for the \"object\" tag's \"type\" attribute!\n";
+									RETURN_ERROR;
+								}
+							}
+						}
+						
+						// Name is mandatory so check it is there.
+						if(nameobj == Empty){
+							std::cerr << "ERROR: \"object\" tag must have \"name\" attribute!\n";
+							RETURN_ERROR;
+						}
 
 						// Allocate an object and place push to a stack next new parameter list.
-						auto object = new ValueObjectType(nameobj);
+						auto object = new ValueObjectType(nameobj, type);
+
 						ParameterList& list = stack.top().first;
 						list.append(object);
 
@@ -555,38 +591,71 @@ static void generate_controls_setup(QTextStream &stream, ControlNode *node) {
 		stream << "\t\t" << node->variable_name << RefPointer << "set" << propname << "(";
 
 		// How paramter is given out depends upon it's type.
-		ParameterListTypes types = property->parameters.at(0);
-		switch (*types.type){
-			case ValueType::OBJECT:
-				//TODO: Handle internal parameter list.
-				stream << types.obj->objname << "(";
+		//
+		// We need special handling for object value type since it may have multiple parameters and set method call it self may have
+		// multiple parameters. Hence, we have a stack which we push parameter list and index to point where in the list we are.
+		//
+		// First we push properties parameter list to the stack. Then if object value is encoundered we push that to the stack.
+		// Top of the stack get's popped when list is handled fully. We loop untill stack is emptied. Each cycle we handle next
+		// parameter of the top most list in the stack.
+		//
+		// This way when object value type is hit we handle it's paramters before moving back to handle previous list's next parameter list.
+		QStack<QPair<ParameterList&,int>> stack;
+		stack.append(std::pair<ParameterList&,int>(property->parameters, 0));
+		do{
+			auto &list = stack.top();
+			if(list.second < list.first.count()) {
+
+				// Quary next paramter from the list and move the index right after.
+				ParameterListTypes types = list.first.at(list.second);
+
+				// Check are we not procesing zeroth parameter which mean seperator comma should be added.
+				if(list.second > 0) stream << ", ";
+
+				// Could be placed lower in the code but it is nicer to read if this is here.
+				list.second++;
+
+				switch (*types.type){
+					case ValueType::OBJECT:
+						if(types.obj->objtype == ValueObjectType::ObjType::ALLOCATED) stream << "new ";
+						stream << types.obj->objname << "(";
+						stack.append(std::pair<ParameterList&,int>(types.obj->parameters, 0));
+						break;
+					case ValueType::RECT:
+						stream << "QRect(" << types.rect->x << types.rect->y << types.rect->width << types.rect->height << ")";
+						break;
+					case ValueType::NUMBER:
+					case ValueType::BOOL:
+						// We have previously already handled the number and bool to be
+						// correct format so we can just push them to the stream.
+						stream << types.str->value;
+						break;
+					case ValueType::CSTRING:
+						// Regular char string we just have to add quotes around value.
+						generate_controls_setup_string_helper(stream, types.str->value);
+						break;
+					case ValueType::QSTRING:
+						stream << "QString(";
+						generate_controls_setup_string_helper(stream, types.str->value);
+						stream << ")";
+						break;
+					case ValueType::SSTRING:
+						stream << "std::String(";
+						generate_controls_setup_string_helper(stream, types.str->value);
+						stream << ")";
+						break;
+				}
+			}
+			else {
+				// We have hit end of a paramter list. We must place closing bracket.
+				// We than pop the stack.
 				stream << ")";
-				break;
-			case ValueType::RECT:
-				stream << "QRect(" << types.rect->x << types.rect->y << types.rect->width << types.rect->height << ")";
-				break;
-			case ValueType::NUMBER:
-			case ValueType::BOOL:
-				// We have previously already handled the number and bool to be
-				// correct format so we can just push them to the stream.
-				stream << types.str->value;
-				break;
-			case ValueType::CSTRING:
-				// Regular char string we just have to add quotes around value.
-				generate_controls_setup_string_helper(stream, types.str->value);
-				break;
-			case ValueType::QSTRING:
-				stream << "QString(";
-				generate_controls_setup_string_helper(stream, types.str->value);
-				stream << ")";
-				break;
-			case ValueType::SSTRING:
-				stream << "std::String(";
-				generate_controls_setup_string_helper(stream, types.str->value);
-				stream << ")";
-				break;
-		}
-		stream << ");\n";
+				stack.pop();
+
+				if(stack.isEmpty()) break;
+			}
+		}while(true);
+		stream << ";\n";
 
 	}
 
