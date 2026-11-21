@@ -356,7 +356,7 @@ static QString parse_float_tag(QXmlStreamReader *reader, QString nodename, bool 
 * Moves reader to next token and returns is document end reached or end element not reached.
 * Moves over any whitespace characters and comments.
 */
-static inline bool was_moved_to_next_token_in_element(QXmlStreamReader *reader, QXmlStreamReader::TokenType &token){
+static inline bool move_to_next_token_in_element(QXmlStreamReader *reader, QXmlStreamReader::TokenType &token){
 	bool ok;
 	do{
 		token = reader->readNext();
@@ -390,7 +390,7 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 
 	QXmlStreamReader::TokenType token;
 	do{
-		while(was_moved_to_next_token_in_element(reader, token)) {
+		while(move_to_next_token_in_element(reader, token)) {
 
 			switch(token) {
 				case QXmlStreamReader::TokenType::StartElement:
@@ -762,7 +762,7 @@ int main(int argn, char **argv) {
 
 					// Read all children of the "ui" element.
 					// If we hit EndElement it must be end of "ui" tag.
-					while(was_moved_to_next_token_in_element(&xmlreader, token)) {
+					while(move_to_next_token_in_element(&xmlreader, token)) {
 
 						name = xmlreader.name();
 						if(name == TagExportMacro) {
@@ -850,7 +850,7 @@ int main(int argn, char **argv) {
 							// Initialized to the address of treeroot so that first child can be allocated like there is `ControlNode`.
 							ControlNode *processinghead = (ControlNode*)&tree;
 
-							while(was_moved_to_next_token_in_element(&xmlreader, token) || xmlreader.name() != TagStruct) {
+							while(move_to_next_token_in_element(&xmlreader, token) || xmlreader.name() != TagStruct) {
 								switch(token) {
 									case QXmlStreamReader::TokenType::Invalid:
 										std::cerr << "Invalid token encountered.\n";
@@ -860,7 +860,7 @@ int main(int argn, char **argv) {
 											QStringView name = xmlreader.name();
 											if (name == "properties") {
 												// We expect only properties of the current control here on out. Parse untill end of the tag is reached.
-												while(was_moved_to_next_token_in_element(&xmlreader, token)) {
+												while(move_to_next_token_in_element(&xmlreader, token)) {
 													if(token == QXmlStreamReader::StartElement) {
 														QString tagname = QString(xmlreader.name());
 														ControlProperty *prop;
