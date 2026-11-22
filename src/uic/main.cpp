@@ -1,16 +1,16 @@
 /*
  * Main for ui compiler for QSkinny.
-*/
+ */
+#include <iostream>
+#include <filesystem>
 #include <QtCore/QCoreApplication>
 #include <QtCore/QCommandLineParser>
 #include <QtCore/QFile>
 #include <QtCore/QTextStream>
 #include <QtCore/QString>
-#include <QStack>
+#include <QtCore/QStack>
 #include <QtCore/QXmlStreamReader>
 #include <qskinny/QskGlobal.h>
-#include <iostream>
-#include <filesystem>
 
 /*
  * If version number is not given from the compiler then default to "git",
