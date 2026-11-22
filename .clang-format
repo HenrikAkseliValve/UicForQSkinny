@@ -1,0 +1,50 @@
+Language: Cpp
+LineEnding: LF
+UseTab: ForIndentation
+ColumnLimit: 0
+IndentWidth: 2
+TabWidth: 2
+QualifierAlignment: Custom
+QualifierOrder: [static, inline, volatile, const, type]
+PointerAlignment: Right
+ReferenceAlignment: Pointer
+IndentCaseLabels: true
+IndentGotoLabels: InnerIndent
+SortIncludes: false
+SpaceInEmptyBraces: Never
+AlignEscapedNewlines: LeftWithLastLine
+AllowShortIfStatementsOnASingleLine: AllIfsAndElse
+
+# Space handling.
+SpaceBeforeSquareBrackets: false
+SpaceBeforeParens: Custom
+SpaceBeforeParensOptions:
+  AfterFunctionDeclarationName: false
+  AfterFunctionDefinitionName:  false
+  AfterControlStatements:       false
+  AfterForeachMacros:           false
+  AfterIfMacros:                false
+  AfterOverloadedOperator:      true
+  AfterRequiresInClause:        false
+  BeforeNonEmptyParentheses:    false
+  AfterPlacementOperator:       false
+SpaceBeforeRangeBasedForLoopColon: true
+SpaceBeforeCpp11BracedList:   false
+SpaceBeforeCaseColon:         false
+SpacesInAngles: Never
+
+BreakBeforeBraces: Custom
+BraceWrapping:
+  AfterFunction: false
+  AfterCaseLabel: true
+  AfterNamespace: false
+  AfterClass: false
+  AfterUnion: false
+  AfterExternBlock: false
+  BeforeCatch: true
+  BeforeElse: true
+  BeforeLambdaBody: false
+  BeforeWhile: false
+
+# Neeeds 24 or higher
+#SpacesInBlockComments: Leave

@@ -14,7 +14,7 @@
 
 /*
  * If version number is not given from the compiler then default to "git",
-*/
+ */
 #ifndef PROGNAME
 #define PROGNAME qskuic
 #endif
@@ -22,7 +22,7 @@
 
 /*
  * If version number is not given from the compiler then default to "git",
-*/
+ */
 #ifndef PROG_VERSION
 #define PROG_VERSION git
 #endif
@@ -30,7 +30,7 @@
 
 /*
  * Types of value types. Each of these has it's own tag.
-*/
+ */
 enum ValueType {
 	OBJECT,
 	NUMBER,
@@ -48,35 +48,35 @@ struct ValueRect;
 
 /*
  * Types of structures parameter list may point to.
-*/
+ */
 union ParameterListTypes {
 	void *shadow;
 	ValueType *type;
 	ValueString *str;
 	ValueObjectType *obj;
 	ValueRect *rect;
-	
-	ParameterListTypes(ValueString *str){
+
+	ParameterListTypes(ValueString *str) {
 		this->str = str;
 	}
 
-	ParameterListTypes(ValueObjectType *obj){
+	ParameterListTypes(ValueObjectType *obj) {
 		this->obj = obj;
 	}
 
-	ParameterListTypes(ValueRect *rect){
+	ParameterListTypes(ValueRect *rect) {
 		this->rect = rect;
 	}
 };
 
 /*
  * Alias QList for the parametrers list.
-*/
+ */
 typedef QList<union ParameterListTypes> ParameterList;
 
 /*
  * For simple value type structure stored is just QString since we just pasting it to the output.
-*/
+ */
 typedef struct ValueString {
 	// Type of value this is.
 	ValueType type;
@@ -91,11 +91,11 @@ typedef struct ValueString {
 
 /*
  * Object valie type is special as the it has it's own ParameterList for the constructor.
-*/
+ */
 typedef struct ValueObjectType {
 	// Type of the value. Must be `ValueType::OBJECT`.
 	ValueType type;
-	
+
 	// Type of the object value a.k.a reference or pointer.
 	enum ObjType {
 		NORMAL,
@@ -104,13 +104,13 @@ typedef struct ValueObjectType {
 
 	// Name of the object.
 	QString objname;
-	
+
 	// List of parameters to the constructor of the object.
 	ParameterList parameters;
 
 	/*
-	* Since there is only one type force it by constructor. Also for object name.
-	*/
+	 * Since there is only one type force it by constructor. Also for object name.
+	 */
 	ValueObjectType(QString objname, ObjType type) {
 		this->type = ValueType::OBJECT;
 		this->objname = objname;
@@ -122,7 +122,7 @@ typedef struct ValueObjectType {
 
 /*
  * Special type for the QRect. QRect is not used since QString is used in generation anyway.
-*/
+ */
 typedef struct ValueRect {
 	// Type must be QRect.
 	ValueType type;
@@ -139,7 +139,7 @@ typedef struct ValueRect {
 
 /*
  * Structure for the controls property.
-*/
+ */
 typedef struct ControlProperty {
 	// Name of the property.
 	QString property;
@@ -148,8 +148,8 @@ typedef struct ControlProperty {
 } ControlProperty;
 
 static void free_parameter_list(ParameterList &list) {
-	for (auto param : list) {
-		switch (*param.type){
+	for(auto param : list) {
+		switch(*param.type) {
 			case ValueType::OBJECT:
 				free_parameter_list(param.obj->parameters);
 				delete param.obj;
@@ -160,7 +160,7 @@ static void free_parameter_list(ParameterList &list) {
 			default:
 				delete param.str;
 				break;
-			}
+		}
 	}
 }
 
@@ -168,7 +168,7 @@ static void free_parameter_list(ParameterList &list) {
  * Control node is the n-tree node representing a control. Tree is generated parent to child. Parent only connections
  * to one sibling which connections to other childer. This done because easy dynamic response and we most likelly
  * have to multiple passes of generation.
-*/
+ */
 typedef struct ControlNode {
 	// Pointer to sibling of this control.
 	struct ControlNode *sibling;
@@ -184,15 +184,15 @@ typedef struct ControlNode {
 	// Name of the control.
 	QString control_name;
 	// Properties to be set during the setup call.
-	QList<ControlProperty*> properties;
+	QList<ControlProperty *> properties;
 	// Flag zone for the control to save memory on bools.
 	struct {
 		// Indicates was the control prefixed with "c:" or not when parsed.
 		// TODO: Is there a way get rid of this....
-		bool prefixed:1;
+		bool prefixed : 1;
 	} flags;
 
-	~ControlNode(){
+	~ControlNode() {
 		// We need to deallocate the properties.
 		// We do not deallocate ConrolNode pointers to keep a processing not hit free after use.
 		for(auto prop : this->properties) {
@@ -205,12 +205,12 @@ typedef struct ControlNode {
 
 /*
  * Sepcial variable to indicate empty string. Used as intialization for some QStrings.
-*/
+ */
 static const QString Empty = QStringLiteral("");
 
 /*
  * List of tag name in constant strings to avoid writting errors when used multiple times.
-*/
+ */
 static const QString TagUi = QStringLiteral("ui");
 static const QString TagExportMacro = QStringLiteral("exportmacro");
 static const QString TagAuthor = QStringLiteral("author");
@@ -227,21 +227,21 @@ static const QString TagRect = QStringLiteral("rect");
 
 /*
  * Just string for the "->" which is used in C/C++ reference member of pointer.
-*/
+ */
 static const QString RefPointer = QStringLiteral("->");
 
 /*
  * Just a zero for returning a zero from special case parsing.
-*/
+ */
 static const QString Zero = QStringLiteral("0");
 
 /*
  * Parse a internals of pure text tag. Needs tag name for the error messages.
-*/
+ */
 static QString parse_text_tag(QXmlStreamReader *reader, QString nodename) {
 	auto nodeid = reader->readNext();
 	if(nodeid == QXmlStreamReader::TokenType::Characters) {
-		
+
 		// Before returning the check that end tag is reached for given node.
 		// Return value is cached for time being. Note also that QStringView returned by reader
 		// would change before is is used so we need to change it to solid memory.
@@ -249,13 +249,13 @@ static QString parse_text_tag(QXmlStreamReader *reader, QString nodename) {
 
 		reader->readNext();
 		if(reader->isEndElement()) {
-			if (reader->name() == nodename) return returner;
-			else{
+			if(reader->name() == nodename) return returner;
+			else {
 				std::cerr << "End tag found but it was not for " << nodename.toStdString() << ".\n";
 				exit(1);
 			}
 		}
-		else{
+		else {
 			std::cerr << "Inside tag " << nodename.toStdString() << " has to be just text.\n";
 			exit(1);
 		}
@@ -268,7 +268,7 @@ static QString parse_text_tag(QXmlStreamReader *reader, QString nodename) {
 
 /*
  * If tag only accepts an integer child this function can be used to parse the result.
-*/
+ */
 static QString parse_integer_tag(QXmlStreamReader *reader, QString nodename, bool &ok) {
 	QString text = parse_text_tag(reader, nodename);
 
@@ -305,7 +305,7 @@ static QString parse_integer_tag(QXmlStreamReader *reader, QString nodename, boo
 
 /*
  * Parse a floating point from the text string.
-*/
+ */
 static QString parse_float_tag(QXmlStreamReader *reader, QString nodename, bool &ok) {
 	QString text = parse_text_tag(reader, nodename);
 
@@ -313,7 +313,7 @@ static QString parse_float_tag(QXmlStreamReader *reader, QString nodename, bool 
 	int i = 0;
 
 	// Special handle case where string is empty. This is interperted as zero.
-	if(text.isEmpty()){
+	if(text.isEmpty()) {
 		ok = true;
 		return Zero;
 	}
@@ -342,7 +342,7 @@ static QString parse_float_tag(QXmlStreamReader *reader, QString nodename, bool 
 
 			break;
 		}
-		else if (!text[i].isDigit()){
+		else if(!text[i].isDigit()) {
 			ok = false;
 			return Empty;
 		}
@@ -353,29 +353,29 @@ static QString parse_float_tag(QXmlStreamReader *reader, QString nodename, bool 
 }
 
 /*
-* Moves reader to next token and returns is document end reached or end element not reached.
-* Moves over any whitespace characters and comments.
-*/
-static inline bool move_to_next_token_in_element(QXmlStreamReader *reader, QXmlStreamReader::TokenType &token){
+ * Moves reader to next token and returns is document end reached or end element not reached.
+ * Moves over any whitespace characters and comments.
+ */
+static inline bool move_to_next_token_in_element(QXmlStreamReader *reader, QXmlStreamReader::TokenType &token) {
 	bool ok;
-	do{
+	do {
 		token = reader->readNext();
-	}while(((token == QXmlStreamReader::Characters && reader->isWhitespace()) || token == QXmlStreamReader::Comment) && !reader->atEnd());
+	} while(((token == QXmlStreamReader::Characters && reader->isWhitespace()) || token == QXmlStreamReader::Comment) && !reader->atEnd());
 	return !reader->atEnd() && token != QXmlStreamReader::TokenType::EndElement;
 }
 
 /*
-* Parses the property tag that was hit during processing. Property name, tag of that property can be different.
-* For example: Tag "p.Text" will have propname is "Text" but tagname is still "p.Text".
-*/
+ * Parses the property tag that was hit during processing. Property name, tag of that property can be different.
+ * For example: Tag "p.Text" will have propname is "Text" but tagname is still "p.Text".
+ */
 static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tagname, QString propname) {
-	// Support macro for the repeative task of freeing allocated memory in-case of
-	// parsing error.
-	#define RETURN_ERROR \
-	{                    \
-		delete prop;       \
-		return nullptr;    \
-	}                    \
+// Support macro for the repeative task of freeing allocated memory in-case of
+// parsing error.
+#define RETURN_ERROR \
+	{                  \
+		delete prop;     \
+		return nullptr;  \
+	}
 
 	// Allocate the new property first so it is clear where parameters are stored and at error we have to free
 	// what we allocated.
@@ -384,12 +384,12 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 	prop->parameters = ParameterList();
 
 	// Since object tag takes in same tags as properties use stack to push what list is been updated.
-	typedef QPair<ParameterList&, QString&> StackSlot;
+	typedef QPair<ParameterList &, QString &> StackSlot;
 	QStack<StackSlot> stack;
 	stack.push(StackSlot(prop->parameters, tagname));
 
 	QXmlStreamReader::TokenType token;
-	do{
+	do {
 		while(move_to_next_token_in_element(reader, token)) {
 
 			switch(token) {
@@ -402,7 +402,7 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 						QString nameobj = Empty;
 						ValueObjectType::ObjType type = ValueObjectType::ObjType::ALLOCATED;
 
-						for(auto attr : reader->attributes()){
+						for(auto attr : reader->attributes()) {
 							if(attr.name() == "name") {
 								nameobj = attr.value().toString();
 							}
@@ -414,15 +414,15 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 								else if(val == "allocated") {
 									type = ValueObjectType::ObjType::ALLOCATED;
 								}
-								else{
+								else {
 									std::cerr << "ERROR: Unknown value for the \"object\" tag's \"type\" attribute!\n";
 									RETURN_ERROR;
 								}
 							}
 						}
-						
+
 						// Name is mandatory so check it is there.
-						if(nameobj == Empty){
+						if(nameobj == Empty) {
 							std::cerr << "ERROR: \"object\" tag must have \"name\" attribute!\n";
 							RETURN_ERROR;
 						}
@@ -430,49 +430,49 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 						// Allocate an object and place push to a stack next new parameter list.
 						auto object = new ValueObjectType(nameobj, type);
 
-						ParameterList& list = stack.top().first;
+						ParameterList &list = stack.top().first;
 						list.append(object);
 
-						stack.push(StackSlot(object->parameters, (QString&)TagObject));
+						stack.push(StackSlot(object->parameters, (QString &)TagObject));
 					}
-					else if(name == TagNumber){
+					else if(name == TagNumber) {
 						bool ok;
 						QString number = parse_float_tag(reader, TagNumber, ok);
-						if (!ok) return nullptr;
+						if(!ok) return nullptr;
 						stack.top().first.append(new ValueString(ValueType::NUMBER, number));
 					}
-					else if(name == TagQString){
+					else if(name == TagQString) {
 						stack.top().first.append(new ValueString(ValueType::QSTRING, parse_text_tag(reader, TagQString)));
 					}
-					else if(name == TagCString){
+					else if(name == TagCString) {
 						stack.top().first.append(new ValueString(ValueType::CSTRING, parse_text_tag(reader, TagCString)));
 					}
-					else if(name == TagSString){
+					else if(name == TagSString) {
 						stack.top().first.append(new ValueString(ValueType::SSTRING, parse_text_tag(reader, TagSString)));
 					}
-					else if (name == TagBool) {
+					else if(name == TagBool) {
 						QString boolean = parse_text_tag(reader, TagBool);
 						// Check that we have ether true or false or any upper case variant.
 						//
 						// NOTE: Qt's `QString::toLower()` makes a copy so we are avoiding that here.
 						int len = boolean.length();
-						if (len == 4){
+						if(len == 4) {
 							// Is it true?
 							for(int i = 0; i < 4; i++) {
 								boolean[i] = boolean[i].toLower();
 							}
-							if (boolean != "true"){
+							if(boolean != "true") {
 								// TODO: Better message.
 								std::cerr << "Syntax error!\n";
 								RETURN_ERROR
 							}
 						}
-						else if (len == 5){
+						else if(len == 5) {
 							// Is is false
 							for(int i = 0; i < 5; i++) {
 								boolean[i] = boolean[i].toLower();
 							}
-							if (boolean != "false"){
+							if(boolean != "false") {
 								// TODO: Better message.
 								std::cerr << "Syntax error!\n";
 								RETURN_ERROR
@@ -483,65 +483,64 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 
 						stack.top().first.append(new ValueString(ValueType::BOOL, boolean));
 					}
-					else if (name == TagRect) {
+					else if(name == TagRect) {
 
 						// Allocate the rectangle and then use try fill it in.
 						auto rect = new ValueRect();
 						rect->type = ValueType::RECT;
 
-						while ((token = reader->readNext()) && token != QXmlStreamReader::TokenType::EndElement && !reader->atEnd()) {
+						while((token = reader->readNext()) && token != QXmlStreamReader::TokenType::EndElement && !reader->atEnd()) {
 							switch(token) {
 								case QXmlStreamReader::TokenType::StartElement:
-									{
-										bool ok;
-										name = reader->name();
+								{
+									bool ok;
+									name = reader->name();
 
-										QString value = parse_integer_tag(reader, QString(name), ok);
-										if(name == "x") rect->x = value;
-										else if(name == "y") rect->y = value;
-										else if(name == "width") rect->width = value;
-										else if(name == "height") rect->height = value;
+									QString value = parse_integer_tag(reader, QString(name), ok);
+									if(name == "x") rect->x = value;
+									else if(name == "y") rect->y = value;
+									else if(name == "width") rect->width = value;
+									else if(name == "height") rect->height = value;
 
-										stack.top().first.append(rect);
-									}
-									break;
-								}
+									stack.top().first.append(rect);
+								} break;
 							}
-							stack.top().first.append(rect);
+						}
+						stack.top().first.append(rect);
 					}
 					else {
-						std::cerr << "Unknown tag under "<< tagname.toStdString() << " tag. Tag found was \"" << name.toString().toStdString() << "\".\n";
+						std::cerr << "Unknown tag under " << tagname.toStdString() << " tag. Tag found was \"" << name.toString().toStdString() << "\".\n";
 						RETURN_ERROR
 					}
 					break;
 				}
 				case QXmlStreamReader::TokenType::Characters:
-					if (reader->isWhitespace()){
+					if(reader->isWhitespace()) {
 						continue;
 					}
 					std::cerr << "Tag " << tagname.toStdString() << " does not support general text.\n";
 					RETURN_ERROR
 			}
 		}
-		
+
 		// Checking that property tag was ended.
 		if(reader->name() != stack.top().second) {
 			std::string str = stack.top().second.toStdString();
-			std::cerr << "Tag "<< str << " was not closed. Check tag endings inside of " << str << " if ending tag exists.\n";
+			std::cerr << "Tag " << str << " was not closed. Check tag endings inside of " << str << " if ending tag exists.\n";
 			RETURN_ERROR
 		}
 		stack.pop();
 	} while(!stack.isEmpty());
 
 	return prop;
-	#undef RETURN_ERROR
+#undef RETURN_ERROR
 }
 
 /*
  * Handles p.<property> tag when caller knows that is the tag. Done mostly to get same error message to multiple place in code.
-*/
+ */
 static ControlProperty *parse_pdotproperty_tag(QXmlStreamReader *reader, QString tagname) {
-	if (tagname.length() <= 2) {
+	if(tagname.length() <= 2) {
 		std::cerr << "Syntax error. No property name was given after \"p.\" in property tag.\n";
 		exit(1);
 	}
@@ -551,14 +550,14 @@ static ControlProperty *parse_pdotproperty_tag(QXmlStreamReader *reader, QString
 
 /*
  * Allocate new control node with default initialization on some members and others given as parameters.
-*/
-static ControlNode* allocate_control_node(QString cntrlname, QString varname, ControlNode *parent, bool prefixed) {
+ */
+static ControlNode *allocate_control_node(QString cntrlname, QString varname, ControlNode *parent, bool prefixed) {
 	ControlNode *newnode = new ControlNode;
 	newnode->sibling = nullptr;
 	newnode->firstchild = nullptr;
 	// NOTE: Pointer trick to avoid checking does firstchild exist or not.
 	//       Works only if sibling is the first pointer the list.
-	newnode->lastchild = (ControlNode*)&newnode->firstchild;
+	newnode->lastchild = (ControlNode *)&newnode->firstchild;
 	newnode->parent = parent;
 	newnode->control_name = cntrlname;
 	newnode->variable_name = varname;
@@ -568,26 +567,26 @@ static ControlNode* allocate_control_node(QString cntrlname, QString varname, Co
 
 /*
  * Add given string to the stream by adding quotes around it.
-*/
-static void generate_controls_setup_string_helper(QTextStream &stream, QString& value){
+ */
+static void generate_controls_setup_string_helper(QTextStream &stream, QString &value) {
 	stream << "\"" << value << "\"";
 }
 
 /*
  * Generate the setup commands for given control.
-*/
+ */
 static void generate_controls_setup(QTextStream &stream, ControlNode *node) {
 	// Generate the allocation command.
 	// NOTE: We do not need to deacllocate long as QQuick scene had pointer to this.
 	stream << "\t\t" << node->variable_name << " = new " << node->control_name << "(" << node->parent->variable_name << ");\n";
 
 	// Set the variable name as the object name for easier to find the control.
-	stream << "\t\t" << node->variable_name << RefPointer << "setObjectName(QString(\""<< node->variable_name << "\"));\n";
+	stream << "\t\t" << node->variable_name << RefPointer << "setObjectName(QString(\"" << node->variable_name << "\"));\n";
 
 	// Generate property setters.
 	for(auto &property : node->properties) {
 		QString propname = property->property;
-		
+
 		stream << "\t\t" << node->variable_name << RefPointer << "set" << propname << "(";
 
 		// How paramter is given out depends upon it's type.
@@ -600,9 +599,9 @@ static void generate_controls_setup(QTextStream &stream, ControlNode *node) {
 		// parameter of the top most list in the stack.
 		//
 		// This way when object value type is hit we handle it's paramters before moving back to handle previous list's next parameter list.
-		QStack<QPair<ParameterList&,int>> stack;
-		stack.append(std::pair<ParameterList&,int>(property->parameters, 0));
-		do{
+		QStack<QPair<ParameterList &, int>> stack;
+		stack.append(std::pair<ParameterList &, int>(property->parameters, 0));
+		do {
 			auto &list = stack.top();
 			if(list.second < list.first.count()) {
 
@@ -615,11 +614,11 @@ static void generate_controls_setup(QTextStream &stream, ControlNode *node) {
 				// Could be placed lower in the code but it is nicer to read if this is here.
 				list.second++;
 
-				switch (*types.type){
+				switch(*types.type) {
 					case ValueType::OBJECT:
 						if(types.obj->objtype == ValueObjectType::ObjType::ALLOCATED) stream << "new ";
 						stream << types.obj->objname << "(";
-						stack.append(std::pair<ParameterList&,int>(types.obj->parameters, 0));
+						stack.append(std::pair<ParameterList &, int>(types.obj->parameters, 0));
 						break;
 					case ValueType::RECT:
 						stream << "QRect(" << types.rect->x << types.rect->y << types.rect->width << types.rect->height << ")";
@@ -654,9 +653,8 @@ static void generate_controls_setup(QTextStream &stream, ControlNode *node) {
 
 				if(stack.isEmpty()) break;
 			}
-		}while(true);
+		} while(true);
 		stream << ";\n";
-
 	}
 
 	// Have some space at the end for confurtable human review.
@@ -665,7 +663,7 @@ static void generate_controls_setup(QTextStream &stream, ControlNode *node) {
 
 /*
  * Start of the program. Drives the compilation.
-*/
+ */
 int main(int argn, char **argv) {
 
 	QCoreApplication app(argn, argv);
@@ -704,25 +702,25 @@ int main(int argn, char **argv) {
 	// NOTE: Constructing `QTextStream` allocates memory it is constructed.
 	//       Constructor is run for decelration alone :<
 	QTextStream outputfile = QTextStream();
-	
+
 	if(parser.isSet(outputoption)) {
 		// Create the output file and path.
 		std::filesystem::path outputfilepath = parser.value(outputoption).toStdString();
 		if(std::filesystem::exists(outputfilepath)) {
-				// Create the directories up to the file.
-				std::filesystem::create_directories(outputfilepath.parent_path());
+			// Create the directories up to the file.
+			std::filesystem::create_directories(outputfilepath.parent_path());
 		}
 
 		// Open the file and then aias to QDataStream for writting.
 		auto file = new QFile(outputfilepath);
 		if(file->open(QIODeviceBase::OpenMode::enum_type::Truncate | QIODeviceBase::OpenMode::enum_type::WriteOnly) == false) {
-				std::cerr << "Could not open the output file!" << '\n';
-				return 1;
+			std::cerr << "Could not open the output file!" << '\n';
+			return 1;
 		}
 
 		outputfile.setDevice(file);
 	}
-	else{
+	else {
 		// Default to standard output.
 		auto stdoutqfile = new QFile();
 		if(stdoutqfile->open(stdout, QIODeviceBase::OpenMode::enum_type::WriteOnly) == false) {
@@ -768,29 +766,35 @@ int main(int argn, char **argv) {
 						if(name == TagExportMacro) {
 							// Do not allow anything else then character node.
 							exportmacro = parse_text_tag(&xmlreader, TagExportMacro);
-						}else if(name == TagAuthor) {
+						}
+						else if(name == TagAuthor) {
 							// Do not allow anything else then character node.
 							author = parse_text_tag(&xmlreader, TagAuthor);
-						}else if(name == TagDescription) {
+						}
+						else if(name == TagDescription) {
 							// Do not allow anything else then character node.
 							description = parse_text_tag(&xmlreader, TagDescription);
-						}else if(name == TagInclude) {
+						}
+						else if(name == TagInclude) {
 							// Check the 'location' attribute
 							QXmlStreamAttributes attrs = xmlreader.attributes();
 
 							// Assume system include by default.
-							enum {LOCAL, SYSTEM} localorsystem = SYSTEM;
+							enum { LOCAL,
+							       SYSTEM } localorsystem = SYSTEM;
 							for(int i = 0; i < attrs.size(); i++) {
 								QStringView attrName = attrs.at(i).name();
-								if (attrName == "location") {
+								if(attrName == "location") {
 									QString value = attrs.at(i).value().toString();
 									if(value == "local") {
 										localorsystem = LOCAL;
-									}else if (value != "system") {
+									}
+									else if(value != "system") {
 										std::cerr << "Unknown value for attribute location in " << TagInclude.toStdString() << " tag." << '\n';
 										goto jmp_ERROR_CLOSE;
 									}
-								}else {
+								}
+								else {
 									std::cerr << "Unknown attribute in " << TagInclude.toStdString() << " tag." << '\n';
 									goto jmp_ERROR_CLOSE;
 								}
@@ -801,8 +805,8 @@ int main(int argn, char **argv) {
 
 							if(localorsystem == SYSTEM) localincludes.append(include);
 							else systemincludes.append(include);
-
-						}else if(name == TagStruct) {
+						}
+						else if(name == TagStruct) {
 
 							// Pointer to the first children of the root control.
 							// NOTE: Root does not exist as ControlNode.
@@ -810,8 +814,8 @@ int main(int argn, char **argv) {
 								ControlNode *treeroot;
 								ControlNode *lastchild;
 								QString setupparm;
-							}tree;
-							tree.lastchild = (ControlNode*)&tree.treeroot;
+							} tree;
+							tree.lastchild = (ControlNode *)&tree.treeroot;
 							tree.setupparm = "parent";
 
 							// Generate the output comment
@@ -833,7 +837,7 @@ int main(int argn, char **argv) {
 							QStringView classname;
 							for(int i = 0; i < attrs.size(); i++) {
 								QStringView attrName = attrs.at(i).name();
-								if (attrName == "name") {
+								if(attrName == "name") {
 									classname = attrs.at(i).value();
 								}
 							}
@@ -848,7 +852,7 @@ int main(int argn, char **argv) {
 
 							// Processing head for the treeroot.
 							// Initialized to the address of treeroot so that first child can be allocated like there is `ControlNode`.
-							ControlNode *processinghead = (ControlNode*)&tree;
+							ControlNode *processinghead = (ControlNode *)&tree;
 
 							while(move_to_next_token_in_element(&xmlreader, token) || xmlreader.name() != TagStruct) {
 								switch(token) {
@@ -856,93 +860,92 @@ int main(int argn, char **argv) {
 										std::cerr << "Invalid token encountered.\n";
 										goto jmp_ERROR_CLOSE;
 									case QXmlStreamReader::TokenType::StartElement:
-										{
-											QStringView name = xmlreader.name();
-											if (name == "properties") {
-												// We expect only properties of the current control here on out. Parse untill end of the tag is reached.
-												while(move_to_next_token_in_element(&xmlreader, token)) {
-													if(token == QXmlStreamReader::StartElement) {
-														QString tagname = QString(xmlreader.name());
-														ControlProperty *prop;
-														// Here we expect ether p.<property> or <property> tag.
-														if(tagname.startsWith(QString("p."))) {
-															prop = parse_pdotproperty_tag(&xmlreader, tagname);
-														}
-														else {
-															prop = parse_property_tag(&xmlreader, tagname, tagname);
-														}
-														if (prop == nullptr) goto jmp_ERROR_CLOSE;
-
-														processinghead->properties.append(prop);
+									{
+										QStringView name = xmlreader.name();
+										if(name == "properties") {
+											// We expect only properties of the current control here on out. Parse untill end of the tag is reached.
+											while(move_to_next_token_in_element(&xmlreader, token)) {
+												if(token == QXmlStreamReader::StartElement) {
+													QString tagname = QString(xmlreader.name());
+													ControlProperty *prop;
+													// Here we expect ether p.<property> or <property> tag.
+													if(tagname.startsWith(QString("p."))) {
+														prop = parse_pdotproperty_tag(&xmlreader, tagname);
 													}
 													else {
-														std::cerr << "Expected start token for the property tag inside <properties>, got token " << token << '\n';
-														goto jmp_ERROR_CLOSE;
+														prop = parse_property_tag(&xmlreader, tagname, tagname);
 													}
+													if(prop == nullptr) goto jmp_ERROR_CLOSE;
+
+													processinghead->properties.append(prop);
 												}
-											} else if (name.startsWith(QString("p."))) {
-												// We have property directly under control without properties tag.
-
-												auto prop = parse_pdotproperty_tag(&xmlreader, QString(name));
-												if (prop == nullptr) goto jmp_ERROR_CLOSE;
-												processinghead->properties.append(prop);
-											}
-											else {
-												// We assume by default anything under struct or control tag is a other control tag.
-												bool prefixed = false;
-												if (name.startsWith(QString("c."))){
-													if(name.length() == 2){
-														std::cerr << "Syntax error. No control class was given after \"c.\".";
-														goto jmp_ERROR_CLOSE;
-													}
-													name = name.sliced(2);
-													prefixed = true;
+												else {
+													std::cerr << "Expected start token for the property tag inside <properties>, got token " << token << '\n';
+													goto jmp_ERROR_CLOSE;
 												}
-
-												QStringView varname = QStringView();
-												for(auto attribute : xmlreader.attributes()){
-													QStringView attrname = attribute.name();
-													if (attrname == "name"){
-														varname = attribute.value();
-													}
-													else{
-														std::cerr << "Unknown attribute for a control.\n";
-														goto jmp_ERROR_CLOSE;
-													}
-												}
-
-												if (varname.isNull()){
-														std::cerr << "Control must have name attribute so that variable can be created.\n";
-														goto jmp_ERROR_CLOSE;
-												}
-
-												// Create controller node for the tree.
-												ControlNode *newnode = allocate_control_node(QString(name), QString(varname), processinghead, prefixed);
-
-												// Move processing head to the new child after we have updated current controls children status.
-												processinghead->lastchild->sibling = newnode;
-												processinghead->lastchild = newnode;
-												processinghead = newnode;
-
-												// Add control to the data structure.
-												outputfile << '\t' << name << " *" << varname << ";" << "\n";
 											}
 										}
-										break;
-									case QXmlStreamReader::TokenType::EndElement:
-										{
-											// We need to check that tag ending is the correct one.
-											QStringView name = xmlreader.name();
-											if (!(processinghead->control_name == name || (processinghead->flags.prefixed && processinghead->control_name == name.sliced(2)))){
-												std::cerr << "Tag " << processinghead->control_name.toStdString() << " did not end with correct tag! Ending tag of " << name.toString().toStdString() << " found!\n";
+										else if(name.startsWith(QString("p."))) {
+											// We have property directly under control without properties tag.
+
+											auto prop = parse_pdotproperty_tag(&xmlreader, QString(name));
+											if(prop == nullptr) goto jmp_ERROR_CLOSE;
+											processinghead->properties.append(prop);
+										}
+										else {
+											// We assume by default anything under struct or control tag is a other control tag.
+											bool prefixed = false;
+											if(name.startsWith(QString("c."))) {
+												if(name.length() == 2) {
+													std::cerr << "Syntax error. No control class was given after \"c.\".";
+													goto jmp_ERROR_CLOSE;
+												}
+												name = name.sliced(2);
+												prefixed = true;
+											}
+
+											QStringView varname = QStringView();
+											for(auto attribute : xmlreader.attributes()) {
+												QStringView attrname = attribute.name();
+												if(attrname == "name") {
+													varname = attribute.value();
+												}
+												else {
+													std::cerr << "Unknown attribute for a control.\n";
+													goto jmp_ERROR_CLOSE;
+												}
+											}
+
+											if(varname.isNull()) {
+												std::cerr << "Control must have name attribute so that variable can be created.\n";
 												goto jmp_ERROR_CLOSE;
 											}
 
-											// Move to parent as all of the siblings have been processed.
-											processinghead = processinghead->parent;
+											// Create controller node for the tree.
+											ControlNode *newnode = allocate_control_node(QString(name), QString(varname), processinghead, prefixed);
 
+											// Move processing head to the new child after we have updated current controls children status.
+											processinghead->lastchild->sibling = newnode;
+											processinghead->lastchild = newnode;
+											processinghead = newnode;
+
+											// Add control to the data structure.
+											outputfile << '\t' << name << " *" << varname << ";" << "\n";
 										}
-										break;
+									} break;
+									case QXmlStreamReader::TokenType::EndElement:
+									{
+										// We need to check that tag ending is the correct one.
+										QStringView name = xmlreader.name();
+										if(!(processinghead->control_name == name || (processinghead->flags.prefixed && processinghead->control_name == name.sliced(2)))) {
+											std::cerr << "Tag " << processinghead->control_name.toStdString() << " did not end with correct tag! Ending tag of " << name.toString().toStdString() << " found!\n";
+											goto jmp_ERROR_CLOSE;
+										}
+
+										// Move to parent as all of the siblings have been processed.
+										processinghead = processinghead->parent;
+
+									} break;
 								}
 							}
 
@@ -956,16 +959,16 @@ int main(int argn, char **argv) {
 							// Free the memory as you go so that we do not need to have third pass for the memory freeing good points.
 							ControlNode *head = tree.treeroot;
 
-							while (head->firstchild != nullptr){
+							while(head->firstchild != nullptr) {
 								// Again we should generate what we are pointing at right now before moving to parent.
 								generate_controls_setup(outputfile, head);
 								head = head->firstchild;
 							}
 							ControlNode *temp;
-							while (head != (ControlNode*)&tree.treeroot){
+							while(head != (ControlNode *)&tree.treeroot) {
 
 								temp = head;
-								if (head->sibling != nullptr){
+								if(head->sibling != nullptr) {
 									do {
 
 										// Before moving to next sibling we should generate what we are pointing at right now.
@@ -973,15 +976,15 @@ int main(int argn, char **argv) {
 
 										head = head->sibling;
 										delete temp;
-										
-										while (head->firstchild != nullptr){
+
+										while(head->firstchild != nullptr) {
 											// Before moving to next sibling we should generate what we are pointing at right now.
 											generate_controls_setup(outputfile, head);
 											head = head->firstchild;
 										}
 
 										temp = head;
-									}while (head->sibling != nullptr);
+									} while(head->sibling != nullptr);
 
 									// We need to generate before leaving since current thing head is pointing is not generated.
 									generate_controls_setup(outputfile, head);
@@ -993,8 +996,8 @@ int main(int argn, char **argv) {
 
 							// We need to close the `setup method`.
 							outputfile << "\t}\n};\n";
-
-						}else {
+						}
+						else {
 							std::cerr << "Unknown tag found as child of ui tag." << '\n';
 							goto jmp_ERROR_CLOSE;
 						}
@@ -1005,10 +1008,10 @@ int main(int argn, char **argv) {
 						std::cerr << "Tag ui was not closed. Check tag endings inside of ui if ending tag exists.\n";
 						goto jmp_ERROR_CLOSE;
 					}
-
-				}else {
-						std::cerr << "Unknown root tag found. Tag hit:" << name.toUtf8().toStdString() << '\n';
-						goto jmp_ERROR_CLOSE;
+				}
+				else {
+					std::cerr << "Unknown root tag found. Tag hit:" << name.toUtf8().toStdString() << '\n';
+					goto jmp_ERROR_CLOSE;
 				}
 			}
 		}
