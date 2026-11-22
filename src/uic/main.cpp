@@ -489,7 +489,7 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 						auto rect = new ValueRect();
 						rect->type = ValueType::RECT;
 
-						while ((token = reader->readNext()) && token != QXmlStreamReader::TokenType::EndElement && !reader->atEnd()){
+						while ((token = reader->readNext()) && token != QXmlStreamReader::TokenType::EndElement && !reader->atEnd()) {
 							switch(token) {
 								case QXmlStreamReader::TokenType::StartElement:
 									{
@@ -540,7 +540,7 @@ static ControlProperty *parse_property_tag(QXmlStreamReader *reader, QString tag
 /*
  * Handles p.<property> tag when caller knows that is the tag. Done mostly to get same error message to multiple place in code.
 */
-static ControlProperty *parse_pdotproperty_tag(QXmlStreamReader *reader, QString tagname){
+static ControlProperty *parse_pdotproperty_tag(QXmlStreamReader *reader, QString tagname) {
 	if (tagname.length() <= 2) {
 		std::cerr << "Syntax error. No property name was given after \"p.\" in property tag.\n";
 		exit(1);
@@ -1003,6 +1003,7 @@ int main(int argn, char **argv) {
 					// Check that end tag we hit was "ui".
 					if(xmlreader.name() != TagUi) {
 						std::cerr << "Tag ui was not closed. Check tag endings inside of ui if ending tag exists.\n";
+						goto jmp_ERROR_CLOSE;
 					}
 
 				}else {
