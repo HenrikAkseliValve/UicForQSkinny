@@ -236,6 +236,42 @@ static const QString RefPointer = QStringLiteral("->");
 static const QString Zero = QStringLiteral("0");
 
 /*
+ * Support function to free the control tree. Called on error.
+ */
+static void free_control(ControlNode *root) {
+	ControlNode *head = root;
+	ControlNode *freeme;
+	// Move to child leaf before starting to delete.
+	while(head->firstchild != nullptr)
+		head = head->firstchild;
+
+	// From the "first" leaf start moving leaf to leaf deleting control as we go.
+	while(head != root) {
+		freeme = head;
+		if(head->sibling != nullptr) {
+			do {
+				// Free previous sibling
+				head = head->sibling;
+				delete freeme;
+
+				// Sibling may go deeper then leaf we were at.
+				while(head->firstchild != nullptr)
+					head = head->firstchild;
+
+				// We are going to free this control regardless.
+				freeme = head;
+			} while(head->sibling != nullptr);
+		}
+		// Free the last child.
+		head = head->parent;
+		delete freeme;
+	}
+
+	// We delete root manually.
+	delete root;
+}
+
+/*
  * Parse a internals of pure text tag. Needs tag name for the error messages.
  */
 static QString parse_text_tag(QXmlStreamReader *reader, QString nodename) {
@@ -858,6 +894,7 @@ int main(int argn, char **argv) {
 								switch(token) {
 									case QXmlStreamReader::TokenType::Invalid:
 										std::cerr << "Invalid token encountered.\n";
+										free_control(tree.treeroot);
 										goto jmp_ERROR_CLOSE;
 									case QXmlStreamReader::TokenType::StartElement:
 									{
@@ -875,12 +912,16 @@ int main(int argn, char **argv) {
 													else {
 														prop = parse_property_tag(&xmlreader, tagname, tagname);
 													}
-													if(prop == nullptr) goto jmp_ERROR_CLOSE;
+													if(prop == nullptr) {
+														free_control(tree.treeroot);
+														goto jmp_ERROR_CLOSE;
+													}
 
 													processinghead->properties.append(prop);
 												}
 												else {
 													std::cerr << "Expected start token for the property tag inside <properties>, got token " << token << '\n';
+													free_control(tree.treeroot);
 													goto jmp_ERROR_CLOSE;
 												}
 											}
@@ -889,7 +930,10 @@ int main(int argn, char **argv) {
 											// We have property directly under control without properties tag.
 
 											auto prop = parse_pdotproperty_tag(&xmlreader, QString(name));
-											if(prop == nullptr) goto jmp_ERROR_CLOSE;
+											if(prop == nullptr) {
+												free_control(tree.treeroot);
+												goto jmp_ERROR_CLOSE;
+											}
 											processinghead->properties.append(prop);
 										}
 										else {
@@ -898,6 +942,7 @@ int main(int argn, char **argv) {
 											if(name.startsWith(QString("c."))) {
 												if(name.length() == 2) {
 													std::cerr << "Syntax error. No control class was given after \"c.\".";
+													free_control(tree.treeroot);
 													goto jmp_ERROR_CLOSE;
 												}
 												name = name.sliced(2);
@@ -912,12 +957,14 @@ int main(int argn, char **argv) {
 												}
 												else {
 													std::cerr << "Unknown attribute for a control.\n";
+													free_control(tree.treeroot);
 													goto jmp_ERROR_CLOSE;
 												}
 											}
 
 											if(varname.isNull()) {
 												std::cerr << "Control must have name attribute so that variable can be created.\n";
+												free_control(tree.treeroot);
 												goto jmp_ERROR_CLOSE;
 											}
 
@@ -939,6 +986,7 @@ int main(int argn, char **argv) {
 										QStringView name = xmlreader.name();
 										if(!(processinghead->control_name == name || (processinghead->flags.prefixed && processinghead->control_name == name.sliced(2)))) {
 											std::cerr << "Tag " << processinghead->control_name.toStdString() << " did not end with correct tag! Ending tag of " << name.toString().toStdString() << " found!\n";
+											free_control(tree.treeroot);
 											goto jmp_ERROR_CLOSE;
 										}
 
